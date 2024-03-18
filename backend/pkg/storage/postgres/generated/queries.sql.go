@@ -77,3 +77,15 @@ func (q *Queries) CreateGenre(ctx context.Context, name pgtype.Text) (pgtype.UUI
 	err := row.Scan(&id)
 	return id, err
 }
+
+const deleteGenre = `-- name: DeleteGenre :execrows
+DELETE FROM genre WHERE id = $1
+`
+
+func (q *Queries) DeleteGenre(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteGenre, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

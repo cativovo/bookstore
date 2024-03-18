@@ -6,6 +6,9 @@ INSERT INTO genre (
 )
 RETURNING id;
 
+-- name: DeleteGenre :execrows
+DELETE FROM genre WHERE id = $1;
+
 -- name: CreateBook :one
 INSERT INTO book (
   title, author, description, price, cover_image

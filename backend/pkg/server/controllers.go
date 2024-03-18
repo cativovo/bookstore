@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/cativovo/bookstore/pkg/book"
@@ -20,6 +21,7 @@ func (s *Server) registerControllers() {
 
 	s.echo.GET("/books", c.getBooks)
 	s.echo.POST("/genre", c.createGenre)
+	s.echo.DELETE("/genre/:id", c.deleteGenre)
 }
 
 func (c *controller) getBooks(ctx echo.Context) error {
@@ -49,4 +51,18 @@ func (c *controller) createGenre(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(http.StatusOK, genre)
+}
+
+func (c *controller) deleteGenre(ctx echo.Context) error {
+	id := ctx.Param("id")
+	if err := c.bookService.DeleteGenre(id); err != nil {
+		if errors.Is(err, book.ErrNotFound) {
+			return echo.NewHTTPError(http.StatusNotFound, "genre not found")
+		}
+
+		ctx.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError, messageGenericError)
+	}
+
+	return ctx.NoContent(http.StatusNoContent)
 }

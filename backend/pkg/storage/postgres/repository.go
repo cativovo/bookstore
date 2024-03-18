@@ -48,3 +48,21 @@ func (pr *PostgresRepository) CreateGenre(name string) (book.Genre, error) {
 		Name: name,
 	}, nil
 }
+
+func (pr *PostgresRepository) DeleteGenre(id string) error {
+	var uuid pgtype.UUID
+	if err := uuid.Scan(id); err != nil {
+		return book.ErrNotFound
+	}
+
+	rows, err := pr.queries.DeleteGenre(pr.ctx, uuid)
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return book.ErrNotFound
+	}
+
+	return nil
+}
