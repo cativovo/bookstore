@@ -8,6 +8,7 @@ type BookRepository interface {
 	// GetBooks() ([]Book, error)
 	CreateGenre(name string) (Genre, error)
 	DeleteGenre(id string) error
+	CreateBook(b Book) (Book, error)
 }
 
 type BookService struct {
@@ -30,4 +31,8 @@ func (bs *BookService) CreateGenre(name string) (Genre, error) {
 
 func (bs *BookService) DeleteGenre(id string) error {
 	return bs.repository.DeleteGenre(id)
+}
+
+func (bs *BookService) CreateBook(b Book) (Book, error) {
+	return bs.repository.CreateBook(b)
 }

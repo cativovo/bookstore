@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/cativovo/bookstore/pkg/book"
 	query "github.com/cativovo/bookstore/pkg/storage/postgres/generated"
@@ -65,4 +66,41 @@ func (pr *PostgresRepository) DeleteGenre(id string) error {
 	}
 
 	return nil
+}
+
+func (pr *PostgresRepository) CreateBook(b book.Book) (book.Book, error) {
+	var description pgtype.Text
+	if err := description.Scan(b.Description); err != nil {
+		return book.Book{}, err
+	}
+
+	var price pgtype.Numeric
+	if err := price.Scan(strconv.FormatFloat(b.Price, 'f', 2, 64)); err != nil {
+		return book.Book{}, err
+	}
+
+	var coverImage pgtype.Text
+	if err := coverImage.Scan(b.CoverImage); err != nil {
+		return book.Book{}, err
+	}
+
+	createBookParams := query.CreateBookParams{
+		Title:       b.Title,
+		Author:      b.Author,
+		Description: description,
+		Price:       price,
+		CoverImage:  coverImage,
+	}
+	uuid, err := pr.queries.CreateBook(pr.ctx, createBookParams)
+	if err != nil {
+		return book.Book{}, err
+	}
+
+	id, err := uuid.Value()
+	if err != nil {
+		return book.Book{}, err
+	}
+
+	b.Id = id.(string)
+	return b, nil
 }

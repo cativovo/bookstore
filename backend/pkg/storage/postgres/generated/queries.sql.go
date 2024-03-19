@@ -47,7 +47,7 @@ INSERT INTO book_genre (
 ) VALUES ( 
   $1, $2
 )
-RETURNING id, book_id, genre_id
+RETURNING id
 `
 
 type CreateBookGenreParams struct {
@@ -55,11 +55,11 @@ type CreateBookGenreParams struct {
 	GenreID pgtype.UUID
 }
 
-func (q *Queries) CreateBookGenre(ctx context.Context, arg CreateBookGenreParams) (BookGenre, error) {
+func (q *Queries) CreateBookGenre(ctx context.Context, arg CreateBookGenreParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, createBookGenre, arg.BookID, arg.GenreID)
-	var i BookGenre
-	err := row.Scan(&i.ID, &i.BookID, &i.GenreID)
-	return i, err
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const createGenre = `-- name: CreateGenre :one

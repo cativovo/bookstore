@@ -23,4 +23,4 @@ INSERT INTO book_genre (
 ) VALUES ( 
   $1, $2
 )
-RETURNING *;
+RETURNING id;

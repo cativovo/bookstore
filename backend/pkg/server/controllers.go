@@ -22,6 +22,7 @@ func (s *Server) registerControllers() {
 	s.echo.GET("/books", c.getBooks)
 	s.echo.POST("/genre", c.createGenre)
 	s.echo.DELETE("/genre/:id", c.deleteGenre)
+	s.echo.POST("/book", c.createBook)
 }
 
 func (c *controller) getBooks(ctx echo.Context) error {
@@ -65,4 +66,38 @@ func (c *controller) deleteGenre(ctx echo.Context) error {
 	}
 
 	return ctx.NoContent(http.StatusNoContent)
+}
+
+type payloadCreateBook struct {
+	// https://github.com/go-playground/validator/issues/692#issuecomment-737039536
+	Price       *float64 `json:"price" validate:"required,number"`
+	Title       string   `json:"title" validate:"required"`
+	Author      string   `json:"author" validate:"required"`
+	Description string   `json:"description"`
+	CoverImage  string   `json:"cover_image"`
+}
+
+func (c *controller) createBook(ctx echo.Context) error {
+	var payload payloadCreateBook
+	if err := ctx.Bind(&payload); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := ctx.Validate(&payload); err != nil {
+		return err
+	}
+
+	b, err := c.bookService.CreateBook(book.Book{
+		Title:       payload.Title,
+		Author:      payload.Author,
+		Description: payload.Description,
+		CoverImage:  payload.CoverImage,
+		Price:       *payload.Price,
+	})
+	if err != nil {
+		ctx.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError, messageGenericError)
+	}
+
+	return ctx.JSON(http.StatusCreated, b)
 }

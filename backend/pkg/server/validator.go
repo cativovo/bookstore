@@ -39,8 +39,8 @@ func (v *Validator) Validate(p any) error {
 			switch err.Tag() {
 			case "required":
 				e = fmt.Errorf("%s cannot be blank", err.Field())
-			case "len":
-				e = fmt.Errorf("%s must be exactly %v characters long", err.Field(), err.Param())
+			case "number":
+				e = fmt.Errorf("%s should have numeric value", err.Field())
 			default:
 				e = fmt.Errorf("%s: '%v' must satisfy '%s' '%v' criteria", err.Field(), err.Value(), err.Tag(), err.Param())
 			}
