@@ -2,9 +2,12 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/cativovo/bookstore/pkg/book"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/labstack/echo/v4"
 )
 
@@ -47,6 +50,14 @@ func (c *controller) createGenre(ctx echo.Context) error {
 
 	genre, err := c.bookService.CreateGenre(payload.Name)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			switch pgErr.Code {
+			case pgerrcode.UniqueViolation:
+				return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("genre '%s' already exists", payload.Name))
+			}
+		}
+
 		ctx.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusInternalServerError, messageGenericError)
 	}
