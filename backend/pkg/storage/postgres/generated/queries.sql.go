@@ -41,13 +41,12 @@ func (q *Queries) CreateBook(ctx context.Context, arg CreateBookParams) (pgtype.
 	return id, err
 }
 
-const createBookGenre = `-- name: CreateBookGenre :one
+const createBookGenre = `-- name: CreateBookGenre :exec
 INSERT INTO book_genre (
   book_id, genre_id
 ) VALUES ( 
   $1, $2
 )
-RETURNING id
 `
 
 type CreateBookGenreParams struct {
@@ -55,11 +54,9 @@ type CreateBookGenreParams struct {
 	GenreID pgtype.UUID
 }
 
-func (q *Queries) CreateBookGenre(ctx context.Context, arg CreateBookGenreParams) (pgtype.UUID, error) {
-	row := q.db.QueryRow(ctx, createBookGenre, arg.BookID, arg.GenreID)
-	var id pgtype.UUID
-	err := row.Scan(&id)
-	return id, err
+func (q *Queries) CreateBookGenre(ctx context.Context, arg CreateBookGenreParams) error {
+	_, err := q.db.Exec(ctx, createBookGenre, arg.BookID, arg.GenreID)
+	return err
 }
 
 const createGenre = `-- name: CreateGenre :one
@@ -88,4 +85,15 @@ func (q *Queries) DeleteGenre(ctx context.Context, id pgtype.UUID) (int64, error
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const getGenreByName = `-- name: GetGenreByName :one
+SELECT id, name FROM genre WHERE name = $1
+`
+
+func (q *Queries) GetGenreByName(ctx context.Context, name pgtype.Text) (Genre, error) {
+	row := q.db.QueryRow(ctx, getGenreByName, name)
+	var i Genre
+	err := row.Scan(&i.ID, &i.Name)
+	return i, err
 }

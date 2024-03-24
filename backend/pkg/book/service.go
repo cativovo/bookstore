@@ -6,7 +6,7 @@ var ErrNotFound = errors.New("not found")
 
 type BookRepository interface {
 	// GetBooks() ([]Book, error)
-	CreateGenre(name string) (Genre, error)
+	CreateGenre(name string) error
 	DeleteGenre(id string) error
 	CreateBook(b Book) (Book, error)
 }
@@ -25,7 +25,7 @@ func NewBookService(r BookRepository) *BookService {
 // 	return bs.repository.GetBooks()
 // }
 
-func (bs *BookService) CreateGenre(name string) (Genre, error) {
+func (bs *BookService) CreateGenre(name string) error {
 	return bs.repository.CreateGenre(name)
 }
 

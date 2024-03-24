@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"strconv"
 
 	"github.com/cativovo/bookstore/pkg/book"
@@ -11,6 +12,7 @@ import (
 )
 
 type PostgresRepository struct {
+	conn    *pgx.Conn
 	queries *query.Queries
 	ctx     context.Context
 }
@@ -23,31 +25,24 @@ func NewPostgresRepository(connStr string) (*PostgresRepository, error) {
 	}
 
 	return &PostgresRepository{
+		conn:    conn,
 		queries: query.New(conn),
 		ctx:     ctx,
 	}, nil
 }
 
-func (pr *PostgresRepository) CreateGenre(name string) (book.Genre, error) {
+func (pr *PostgresRepository) CreateGenre(name string) error {
 	var genreName pgtype.Text
 	if err := genreName.Scan(name); err != nil {
-		return book.Genre{}, err
+		return err
 	}
 
-	uuid, err := pr.queries.CreateGenre(pr.ctx, genreName)
+	_, err := pr.queries.CreateGenre(pr.ctx, genreName)
 	if err != nil {
-		return book.Genre{}, err
+		return err
 	}
 
-	id, err := uuid.Value()
-	if err != nil {
-		return book.Genre{}, err
-	}
-
-	return book.Genre{
-		Id:   id.(string),
-		Name: name,
-	}, nil
+	return nil
 }
 
 func (pr *PostgresRepository) DeleteGenre(id string) error {
@@ -69,18 +64,36 @@ func (pr *PostgresRepository) DeleteGenre(id string) error {
 }
 
 func (pr *PostgresRepository) CreateBook(b book.Book) (book.Book, error) {
-	var description pgtype.Text
-	if err := description.Scan(b.Description); err != nil {
+	tx, err := pr.conn.Begin(pr.ctx)
+	if err != nil {
 		return book.Book{}, err
 	}
+	defer tx.Rollback(pr.ctx)
+	qtx := pr.queries.WithTx(tx)
+
+	genreUuids := make([]pgtype.UUID, 0)
+
+	// check if genre exists in db
+	for _, v := range b.Genres {
+		name := pgtype.Text{String: v, Valid: true}
+		genre, err := qtx.GetGenreByName(pr.ctx, name)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return book.Book{}, book.ErrNotFound
+			}
+
+			return book.Book{}, err
+		}
+
+		genreUuids = append(genreUuids, genre.ID)
+	}
+
+	// create book
+	description := pgtype.Text{String: b.Description, Valid: true}
+	coverImage := pgtype.Text{String: b.CoverImage, Valid: true}
 
 	var price pgtype.Numeric
 	if err := price.Scan(strconv.FormatFloat(b.Price, 'f', 2, 64)); err != nil {
-		return book.Book{}, err
-	}
-
-	var coverImage pgtype.Text
-	if err := coverImage.Scan(b.CoverImage); err != nil {
 		return book.Book{}, err
 	}
 
@@ -91,16 +104,32 @@ func (pr *PostgresRepository) CreateBook(b book.Book) (book.Book, error) {
 		Price:       price,
 		CoverImage:  coverImage,
 	}
-	uuid, err := pr.queries.CreateBook(pr.ctx, createBookParams)
+	bookUuid, err := qtx.CreateBook(pr.ctx, createBookParams)
 	if err != nil {
 		return book.Book{}, err
 	}
 
-	id, err := uuid.Value()
+	// create bookgenre
+	for _, genreUuid := range genreUuids {
+		err := qtx.CreateBookGenre(pr.ctx, query.CreateBookGenreParams{
+			BookID:  bookUuid,
+			GenreID: genreUuid,
+		})
+		if err != nil {
+			return book.Book{}, err
+		}
+	}
+
+	if err := tx.Commit(pr.ctx); err != nil {
+		return book.Book{}, err
+	}
+
+	id, err := bookUuid.Value()
 	if err != nil {
 		return book.Book{}, err
 	}
 
 	b.Id = id.(string)
+
 	return b, nil
 }

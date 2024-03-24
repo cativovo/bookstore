@@ -9,6 +9,9 @@ RETURNING id;
 -- name: DeleteGenre :execrows
 DELETE FROM genre WHERE id = $1;
 
+-- name: GetGenreByName :one
+SELECT * FROM genre WHERE name = $1;
+
 -- name: CreateBook :one
 INSERT INTO book (
   title, author, description, price, cover_image
@@ -17,10 +20,9 @@ INSERT INTO book (
 )
 RETURNING id;
 
--- name: CreateBookGenre :one
+-- name: CreateBookGenre :exec
 INSERT INTO book_genre (
   book_id, genre_id
 ) VALUES ( 
   $1, $2
-)
-RETURNING id;
+);

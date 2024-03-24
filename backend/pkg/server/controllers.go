@@ -48,7 +48,7 @@ func (c *controller) createGenre(ctx echo.Context) error {
 		return err
 	}
 
-	genre, err := c.bookService.CreateGenre(payload.Name)
+	err := c.bookService.CreateGenre(payload.Name)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -62,7 +62,7 @@ func (c *controller) createGenre(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, messageGenericError)
 	}
 
-	return ctx.JSON(http.StatusOK, genre)
+	return ctx.NoContent(http.StatusCreated)
 }
 
 func (c *controller) deleteGenre(ctx echo.Context) error {
@@ -86,6 +86,7 @@ type payloadCreateBook struct {
 	Author      string   `json:"author" validate:"required"`
 	Description string   `json:"description"`
 	CoverImage  string   `json:"cover_image"`
+	Genres      []string `json:"genres" validate:"required"`
 }
 
 func (c *controller) createBook(ctx echo.Context) error {
@@ -104,8 +105,12 @@ func (c *controller) createBook(ctx echo.Context) error {
 		Description: payload.Description,
 		CoverImage:  payload.CoverImage,
 		Price:       *payload.Price,
+		Genres:      payload.Genres,
 	})
 	if err != nil {
+		if errors.Is(err, book.ErrNotFound) {
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid genre")
+		}
 		ctx.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusInternalServerError, messageGenericError)
 	}
