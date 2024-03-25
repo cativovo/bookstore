@@ -2,12 +2,15 @@ package book
 
 import "errors"
 
-var ErrNotFound = errors.New("not found")
+var (
+	ErrNotFound      = errors.New("not found")
+	ErrAlreadyExists = errors.New("already exists")
+)
 
 type BookRepository interface {
 	// GetBooks() ([]Book, error)
 	CreateGenre(name string) error
-	DeleteGenre(id string) error
+	DeleteGenre(name string) error
 	CreateBook(b Book) (Book, error)
 }
 
@@ -29,8 +32,8 @@ func (bs *BookService) CreateGenre(name string) error {
 	return bs.repository.CreateGenre(name)
 }
 
-func (bs *BookService) DeleteGenre(id string) error {
-	return bs.repository.DeleteGenre(id)
+func (bs *BookService) DeleteGenre(name string) error {
+	return bs.repository.DeleteGenre(name)
 }
 
 func (bs *BookService) CreateBook(b Book) (Book, error) {

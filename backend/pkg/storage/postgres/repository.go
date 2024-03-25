@@ -7,7 +7,9 @@ import (
 
 	"github.com/cativovo/bookstore/pkg/book"
 	query "github.com/cativovo/bookstore/pkg/storage/postgres/generated"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -39,6 +41,14 @@ func (pr *PostgresRepository) CreateGenre(name string) error {
 
 	_, err := pr.queries.CreateGenre(pr.ctx, genreName)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			switch pgErr.Code {
+			case pgerrcode.UniqueViolation:
+				return book.ErrAlreadyExists
+			}
+		}
+
 		return err
 	}
 
