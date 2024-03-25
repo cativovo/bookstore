@@ -22,7 +22,7 @@ func (s *Server) registerHandlers() {
 
 	s.echo.GET("/books", h.getBooks)
 	s.echo.POST("/genre", h.createGenre)
-	s.echo.DELETE("/genre/:id", h.deleteGenre)
+	s.echo.DELETE("/genre/:name", h.deleteGenre)
 	s.echo.POST("/book", h.createBook)
 }
 
@@ -60,8 +60,8 @@ func (h *handler) createGenre(ctx echo.Context) error {
 }
 
 func (h *handler) deleteGenre(ctx echo.Context) error {
-	id := ctx.Param("id")
-	if err := h.bookService.DeleteGenre(id); err != nil {
+	name := ctx.Param("name")
+	if err := h.bookService.DeleteGenre(name); err != nil {
 		if errors.Is(err, book.ErrNotFound) {
 			return echo.NewHTTPError(http.StatusNotFound, "genre not found")
 		}
