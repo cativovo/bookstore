@@ -35,6 +35,10 @@ func (m *MemoryRepository) DeleteGenre(name string) error {
 		}
 	}
 
+	if len(genres) == len(m.Genres) {
+		return book.ErrNotFound
+	}
+
 	m.Genres = genres
 
 	return nil
@@ -42,4 +46,9 @@ func (m *MemoryRepository) DeleteGenre(name string) error {
 
 func (m *MemoryRepository) CreateBook(b book.Book) (book.Book, error) {
 	return b, nil
+}
+
+func (m *MemoryRepository) Cleanup() {
+	m.Books = make(map[string]book.Book)
+	m.Genres = make([]string, 0)
 }
