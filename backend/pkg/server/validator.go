@@ -38,11 +38,11 @@ func (v *Validator) Validate(p any) error {
 			var e error
 			switch err.Tag() {
 			case "required":
-				e = fmt.Errorf("%s cannot be blank", err.Field())
+				e = fmt.Errorf("'%s' cannot be blank", err.Field())
 			case "number":
-				e = fmt.Errorf("%s should have numeric value", err.Field())
+				e = fmt.Errorf("'%s' should have numeric value", err.Field())
 			default:
-				e = fmt.Errorf("%s: '%v' must satisfy '%s' '%v' criteria", err.Field(), err.Value(), err.Tag(), err.Param())
+				e = fmt.Errorf("'%s': '%v' must satisfy '%s' '%v' criteria", err.Field(), err.Value(), err.Tag(), err.Param())
 			}
 			vErrs = append(vErrs, e)
 		}
