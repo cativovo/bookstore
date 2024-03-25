@@ -11,24 +11,24 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type controller struct {
+type handler struct {
 	bookService *book.BookService
 }
 
 const messageGenericError = "oops something went wrong"
 
-func (s *Server) registerControllers() {
-	c := controller{
+func (s *Server) registerHandlers() {
+	h := handler{
 		bookService: s.bookService,
 	}
 
-	s.echo.GET("/books", c.getBooks)
-	s.echo.POST("/genre", c.createGenre)
-	s.echo.DELETE("/genre/:id", c.deleteGenre)
-	s.echo.POST("/book", c.createBook)
+	s.echo.GET("/books", h.getBooks)
+	s.echo.POST("/genre", h.createGenre)
+	s.echo.DELETE("/genre/:id", h.deleteGenre)
+	s.echo.POST("/book", h.createBook)
 }
 
-func (c *controller) getBooks(ctx echo.Context) error {
+func (h *handler) getBooks(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, map[string]any{
 		"test": "test",
 	})
@@ -38,7 +38,7 @@ type payloadCreateGenre struct {
 	Name string `json:"name" validate:"required"`
 }
 
-func (c *controller) createGenre(ctx echo.Context) error {
+func (h *handler) createGenre(ctx echo.Context) error {
 	var payload payloadCreateGenre
 	if err := ctx.Bind(&payload); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -48,7 +48,7 @@ func (c *controller) createGenre(ctx echo.Context) error {
 		return err
 	}
 
-	err := c.bookService.CreateGenre(payload.Name)
+	err := h.bookService.CreateGenre(payload.Name)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -65,9 +65,9 @@ func (c *controller) createGenre(ctx echo.Context) error {
 	return ctx.NoContent(http.StatusCreated)
 }
 
-func (c *controller) deleteGenre(ctx echo.Context) error {
+func (h *handler) deleteGenre(ctx echo.Context) error {
 	id := ctx.Param("id")
-	if err := c.bookService.DeleteGenre(id); err != nil {
+	if err := h.bookService.DeleteGenre(id); err != nil {
 		if errors.Is(err, book.ErrNotFound) {
 			return echo.NewHTTPError(http.StatusNotFound, "genre not found")
 		}
@@ -89,7 +89,7 @@ type payloadCreateBook struct {
 	Genres      []string `json:"genres" validate:"required"`
 }
 
-func (c *controller) createBook(ctx echo.Context) error {
+func (h *handler) createBook(ctx echo.Context) error {
 	var payload payloadCreateBook
 	if err := ctx.Bind(&payload); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -99,7 +99,7 @@ func (c *controller) createBook(ctx echo.Context) error {
 		return err
 	}
 
-	b, err := c.bookService.CreateBook(book.Book{
+	b, err := h.bookService.CreateBook(book.Book{
 		Title:       payload.Title,
 		Author:      payload.Author,
 		Description: payload.Description,

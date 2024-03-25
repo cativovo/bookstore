@@ -21,7 +21,7 @@ func NewServer(bs *book.BookService) *Server {
 		bookService: bs,
 	}
 
-	s.registerControllers()
+	s.registerHandlers()
 
 	return s
 }
