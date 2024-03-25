@@ -41,7 +41,7 @@ type payloadCreateGenre struct {
 func (h *handler) createGenre(ctx echo.Context) error {
 	var payload payloadCreateGenre
 	if err := ctx.Bind(&payload); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid json")
 	}
 
 	if err := ctx.Validate(&payload); err != nil {
