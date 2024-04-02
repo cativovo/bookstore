@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 }
 
 type expected struct {
-	Err     error
+	Err     *echo.HTTPError
 	Payload string
 	Body    string
 	Code    int
@@ -39,7 +39,7 @@ func (e expected) test(t *testing.T, rec *httptest.ResponseRecorder, err error) 
 				t.Errorf("Expected: %v, Got: %v", e.Err.Error(), err.Error())
 			}
 
-			if he.Code != e.Code {
+			if he.Code != e.Err.Code {
 				t.Errorf("Expected: %v, Got: %v", e.Code, he.Code)
 			}
 		} else {
@@ -50,7 +50,7 @@ func (e expected) test(t *testing.T, rec *httptest.ResponseRecorder, err error) 
 			t.Errorf("Expected: %v, Got: %v", e.Code, rec.Code)
 		}
 
-		body := rec.Body.String()
+		body := strings.TrimSpace(rec.Body.String())
 		if body != e.Body {
 			t.Errorf("Expected: %v, Got: %v", e.Body, body)
 		}
@@ -74,7 +74,7 @@ func TestCreateGenre(t *testing.T) {
 			Code:    http.StatusBadRequest,
 		},
 		{
-			Err:     echo.NewHTTPError(http.StatusBadRequest, "'name' cannot be blank"),
+			Err:     echo.NewHTTPError(http.StatusBadRequest, "'name' is required"),
 			Payload: `{"name": ""}`,
 			Code:    http.StatusBadRequest,
 		},
@@ -122,6 +122,43 @@ func TestDeleteGenre(t *testing.T) {
 		ctx.SetParamNames("name")
 		ctx.SetParamValues(expected.Payload)
 		err := h.deleteGenre(ctx)
+		expected.test(t, rec, err)
+	}
+
+	memoryRepository.Cleanup()
+}
+
+func TestCreateBook(t *testing.T) {
+	tests := []expected{
+		{
+			Payload: `{"title":"this is a title","author":"john doe","description":"this is a description","cover_image":"coverimage.com","genres":["horror"],"price":69}`,
+			Code:    http.StatusCreated,
+			Body:    `{"id":"1","title":"this is a title","author":"john doe","description":"this is a description","cover_image":"coverimage.com","genres":["horror"],"price":69}`,
+		},
+		{
+			Payload: `{"title":"","author":"john doe","description":"","cover_image":"coverimage.com","genres":["horror"],"price":69}`,
+			Err:     echo.NewHTTPError(http.StatusBadRequest, "'title' is required"),
+		},
+		{
+			Payload: `{"title":"this is a title","author":"","description":"","cover_image":"coverimage.com","genres":["horror"],"price":69}`,
+			Err:     echo.NewHTTPError(http.StatusBadRequest, "'author' is required"),
+		},
+		{
+			Payload: `{"title":"this is a title","author":"john doe","description":"this is a description","cover_image":"coverimage.com","genres":["horror"]}`,
+			Err:     echo.NewHTTPError(http.StatusBadRequest, "'price' is required"),
+		},
+		{
+			Payload: `{"title":"this is a title","author":"john doe","description":"this is a description","cover_image":"coverimage.com","price":69}`,
+			Err:     echo.NewHTTPError(http.StatusBadRequest, "'genres' is required"),
+		},
+	}
+
+	for _, expected := range tests {
+		req := httptest.NewRequest(http.MethodPost, "/book", strings.NewReader(expected.Payload))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		ctx := e.NewContext(req, rec)
+		err := h.createBook(ctx)
 		expected.test(t, rec, err)
 	}
 

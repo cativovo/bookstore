@@ -2,6 +2,7 @@ package memory
 
 import (
 	"slices"
+	"strconv"
 
 	"github.com/cativovo/bookstore/pkg/book"
 )
@@ -10,6 +11,8 @@ type MemoryRepository struct {
 	Books  map[string]book.Book
 	Genres []string
 }
+
+var bookId = 0
 
 func NewMemoryRepository() *MemoryRepository {
 	return &MemoryRepository{
@@ -45,10 +48,13 @@ func (m *MemoryRepository) DeleteGenre(name string) error {
 }
 
 func (m *MemoryRepository) CreateBook(b book.Book) (book.Book, error) {
+	bookId++
+	b.Id = strconv.Itoa(bookId)
 	return b, nil
 }
 
 func (m *MemoryRepository) Cleanup() {
 	m.Books = make(map[string]book.Book)
 	m.Genres = make([]string, 0)
+	bookId = 0
 }
