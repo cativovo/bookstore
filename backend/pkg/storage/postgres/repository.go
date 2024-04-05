@@ -11,24 +11,25 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PostgresRepository struct {
-	conn    *pgx.Conn
+	pool    *pgxpool.Pool
 	queries *query.Queries
 	ctx     context.Context
 }
 
 func NewPostgresRepository(connStr string) (*PostgresRepository, error) {
 	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, connStr)
+	pool, err := pgxpool.New(ctx, connStr)
 	if err != nil {
 		return nil, err
 	}
 
 	return &PostgresRepository{
-		conn:    conn,
-		queries: query.New(conn),
+		pool:    pool,
+		queries: query.New(pool),
 		ctx:     ctx,
 	}, nil
 }
@@ -74,7 +75,7 @@ func (pr *PostgresRepository) DeleteGenre(id string) error {
 }
 
 func (pr *PostgresRepository) CreateBook(b book.Book) (book.Book, error) {
-	tx, err := pr.conn.Begin(pr.ctx)
+	tx, err := pr.pool.Begin(pr.ctx)
 	if err != nil {
 		return book.Book{}, err
 	}
