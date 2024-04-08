@@ -90,11 +90,12 @@ func (pr *PostgresRepository) CreateBook(b book.Book) (book.Book, error) {
 		name := pgtype.Text{String: v, Valid: true}
 		genre, err := qtx.GetGenreByName(pr.ctx, name)
 		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
+			switch err {
+			case pgx.ErrNoRows:
 				return book.Book{}, book.ErrNotFound
+			default:
+				return book.Book{}, err
 			}
-
-			return book.Book{}, err
 		}
 
 		genreUuids = append(genreUuids, genre.ID)
