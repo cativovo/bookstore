@@ -87,6 +87,60 @@ func (q *Queries) DeleteGenre(ctx context.Context, id pgtype.UUID) (int64, error
 	return result.RowsAffected(), nil
 }
 
+const getBooks = `-- name: GetBooks :one
+SELECT (
+  SELECT
+    COUNT(id)
+  FROM
+    book
+) as count,
+(
+  SELECT 
+    JSON_AGG(rows.*)
+  FROM
+    (SELECT
+      book.id as id,
+      book.title as title,
+      book.description as description,
+      book.author as author,
+      book.price as price,
+      book.cover_image as cover_image,
+      COALESCE(ARRAY_AGG(genre.name) FILTER (WHERE genre.name IS NOT NULL), '{}') AS genres
+    FROM
+      book
+    LEFT JOIN
+      book_genre ON book_genre.book_id = book.id
+    LEFT JOIN
+      genre ON genre.id = book_genre.genre_id
+    GROUP BY
+      book.id
+    ORDER BY
+      title ASC
+    LIMIT 
+      $1
+    OFFSET 
+      $2
+    ) as rows
+) as books
+`
+
+type GetBooksParams struct {
+	Limit  int32
+	Offset int32
+}
+
+type GetBooksRow struct {
+	Count int64
+	Books []byte
+}
+
+func (q *Queries) GetBooks(ctx context.Context, arg GetBooksParams) (GetBooksRow, error) {
+	row := q.db.QueryRow(ctx, getBooks, arg.Limit, arg.Offset)
+	var i GetBooksRow
+	err := row.Scan(&i.Count, &i.Books)
+	return i, err
+}
+
 const getGenreByName = `-- name: GetGenreByName :one
 SELECT id, name FROM genre WHERE name = $1
 `
@@ -96,4 +150,28 @@ func (q *Queries) GetGenreByName(ctx context.Context, name pgtype.Text) (Genre, 
 	var i Genre
 	err := row.Scan(&i.ID, &i.Name)
 	return i, err
+}
+
+const getGenres = `-- name: GetGenres :many
+SELECT name FROM genre
+`
+
+func (q *Queries) GetGenres(ctx context.Context) ([]pgtype.Text, error) {
+	rows, err := q.db.Query(ctx, getGenres)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Text
+	for rows.Next() {
+		var name pgtype.Text
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		items = append(items, name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

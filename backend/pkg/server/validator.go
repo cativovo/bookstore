@@ -41,6 +41,8 @@ func (v *Validator) Validate(p any) error {
 				e = fmt.Errorf("'%s' is required", err.Field())
 			case "number":
 				e = fmt.Errorf("'%s' should have numeric value", err.Field())
+			case "gte":
+				e = fmt.Errorf("'%s' should be greater than or equal to %s", err.Field(), err.Param())
 			default:
 				e = fmt.Errorf("'%s': '%v' must satisfy '%s' '%v' criteria", err.Field(), err.Value(), err.Tag(), err.Param())
 			}

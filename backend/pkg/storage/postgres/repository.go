@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strconv"
 
@@ -143,4 +144,36 @@ func (pr *PostgresRepository) CreateBook(b book.Book) (book.Book, error) {
 	b.Id = id.(string)
 
 	return b, nil
+}
+
+func (pr *PostgresRepository) GetBooks(opts book.GetBooksOptions) ([]book.Book, int, error) {
+	row, err := pr.queries.GetBooks(pr.ctx, query.GetBooksParams{
+		Limit:  int32(opts.Limit),
+		Offset: int32(opts.Offset),
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var books []book.Book
+	if err := json.Unmarshal(row.Books, &books); err != nil {
+		return nil, 0, err
+	}
+
+	return books, int(row.Count), nil
+}
+
+func (pr *PostgresRepository) GetGenres() ([]string, error) {
+	genreRows, err := pr.queries.GetGenres(pr.ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	genres := make([]string, len(genreRows))
+
+	for i, v := range genreRows {
+		genres[i] = v.String
+	}
+
+	return genres, nil
 }

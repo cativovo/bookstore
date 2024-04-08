@@ -7,8 +7,30 @@ var (
 	ErrAlreadyExists = errors.New("already exists")
 )
 
+type GetBooksFilter struct {
+	Author      string
+	Description string
+	Genres      []string
+}
+
+type SortOrder int
+
+const (
+	SortASC = iota
+	SortDesc
+)
+
+type GetBooksOptions struct {
+	SortBy    string
+	Filter    GetBooksFilter
+	Limit     int
+	Offset    int
+	SortOrder SortOrder
+}
+
 type BookRepository interface {
-	// GetBooks() ([]Book, error)
+	GetBooks(options GetBooksOptions) (books []Book, count int, err error)
+	GetGenres() ([]string, error)
 	CreateGenre(name string) error
 	DeleteGenre(name string) error
 	CreateBook(b Book) (Book, error)
@@ -38,4 +60,12 @@ func (bs *BookService) DeleteGenre(name string) error {
 
 func (bs *BookService) CreateBook(b Book) (Book, error) {
 	return bs.repository.CreateBook(b)
+}
+
+func (bs *BookService) GetBooks(options GetBooksOptions) (books []Book, count int, err error) {
+	return bs.repository.GetBooks(options)
+}
+
+func (bs *BookService) GetGenres() ([]string, error) {
+	return bs.repository.GetGenres()
 }

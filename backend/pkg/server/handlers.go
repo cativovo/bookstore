@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 
 	"github.com/cativovo/bookstore/pkg/book"
@@ -21,15 +22,55 @@ func (s *Server) registerHandlers() {
 	}
 
 	s.echo.GET("/books", h.getBooks)
+	s.echo.GET("/genres", h.getGenres)
 	s.echo.POST("/genre", h.createGenre)
 	s.echo.DELETE("/genre/:name", h.deleteGenre)
 	s.echo.POST("/book", h.createBook)
 }
 
+type getBooksQueryParam struct {
+	// json tag is used by err.Field() of validator, the order of tags should always be query > json
+	Page int `query:"page" json:"page" validate:"gte=1"`
+}
+
 func (h *handler) getBooks(ctx echo.Context) error {
+	var queryParam getBooksQueryParam
+	if err := ctx.Bind(&queryParam); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if err := ctx.Validate(&queryParam); err != nil {
+		return err
+	}
+
+	const limit = 10
+
+	books, count, err := h.bookService.GetBooks(
+		book.GetBooksOptions{
+			Limit:  limit,
+			Offset: (queryParam.Page - 1) * limit,
+		},
+	)
+	if err != nil {
+		ctx.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError, messageGenericError)
+	}
+	pages := math.Ceil(float64(count) / limit)
+
 	return ctx.JSON(http.StatusOK, map[string]any{
-		"test": "test",
+		"books": books,
+		"pages": pages,
 	})
+}
+
+func (h *handler) getGenres(ctx echo.Context) error {
+	genres, err := h.bookService.GetGenres()
+	if err != nil {
+		ctx.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError, messageGenericError)
+	}
+
+	return ctx.JSON(http.StatusOK, genres)
 }
 
 type payloadCreateGenre struct {
