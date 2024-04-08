@@ -1,6 +1,7 @@
 package server
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -23,14 +24,15 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-type expected struct {
+type Expected struct {
 	Err     *echo.HTTPError
+	Cb      func()
 	Payload string
 	Body    string
 	Code    int
 }
 
-func (e expected) test(t *testing.T, rec *httptest.ResponseRecorder, err error) {
+func (e Expected) test(t *testing.T, rec *httptest.ResponseRecorder, err error) {
 	if err != nil {
 		// https://github.com/labstack/echo/issues/593#issuecomment-230926351
 		he, ok := err.(*echo.HTTPError)
@@ -57,8 +59,15 @@ func (e expected) test(t *testing.T, rec *httptest.ResponseRecorder, err error) 
 	}
 }
 
+func NewEchoContext(method string, target string, body io.Reader) (echo.Context, *httptest.ResponseRecorder) {
+	req := httptest.NewRequest(method, target, body)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	return e.NewContext(req, rec), rec
+}
+
 func TestCreateGenre(t *testing.T) {
-	tests := []expected{
+	tests := []Expected{
 		{
 			Payload: `{"name": "horror"}`,
 			Code:    http.StatusCreated,
@@ -99,7 +108,7 @@ func TestCreateGenre(t *testing.T) {
 }
 
 func TestDeleteGenre(t *testing.T) {
-	tests := []expected{
+	tests := []Expected{
 		{
 			Payload: "horror",
 			Code:    http.StatusNoContent,
@@ -129,7 +138,7 @@ func TestDeleteGenre(t *testing.T) {
 }
 
 func TestCreateBook(t *testing.T) {
-	tests := []expected{
+	tests := []Expected{
 		{
 			Payload: `{"title":"this is a title","author":"john doe","description":"this is a description","cover_image":"coverimage.com","genres":["horror"],"price":69}`,
 			Code:    http.StatusCreated,
@@ -163,4 +172,40 @@ func TestCreateBook(t *testing.T) {
 	}
 
 	memoryRepository.Cleanup()
+}
+
+func TestGetGenres(t *testing.T) {
+	tests := []Expected{
+		{
+			Code: http.StatusOK,
+			Body: `["Horror","Comedy"]`,
+			Cb: func() {
+				memoryRepository.Genres = []string{"Horror", "Comedy"}
+			},
+		},
+		{
+			Code: http.StatusOK,
+			Body: `[]`,
+			Cb: func() {
+				memoryRepository.Genres = []string{}
+			},
+		},
+		{
+			Err: echo.NewHTTPError(http.StatusInternalServerError, "oops something went wrong"),
+			Cb: func() {
+				memoryRepository.ReturnError = true
+			},
+		},
+	}
+
+	for _, expected := range tests {
+		if expected.Cb != nil {
+			expected.Cb()
+		}
+
+		ctx, rec := NewEchoContext(http.MethodGet, "/genres", nil)
+		err := h.getGenres(ctx)
+		expected.test(t, rec, err)
+		memoryRepository.Cleanup()
+	}
 }

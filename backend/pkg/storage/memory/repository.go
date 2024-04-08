@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"errors"
 	"slices"
 	"strconv"
 
@@ -8,8 +9,9 @@ import (
 )
 
 type MemoryRepository struct {
-	Books  map[string]book.Book
-	Genres []string
+	Books       map[string]book.Book
+	Genres      []string
+	ReturnError bool
 }
 
 var bookId = 0
@@ -51,6 +53,17 @@ func (m *MemoryRepository) CreateBook(b book.Book) (book.Book, error) {
 	bookId++
 	b.Id = strconv.Itoa(bookId)
 	return b, nil
+}
+
+func (m *MemoryRepository) GetBooks(options book.GetBooksOptions) ([]book.Book, int, error) {
+	return nil, 0, nil
+}
+
+func (m *MemoryRepository) GetGenres() ([]string, error) {
+	if m.ReturnError {
+		return nil, errors.New("error")
+	}
+	return m.Genres, nil
 }
 
 func (m *MemoryRepository) Cleanup() {
