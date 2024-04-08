@@ -154,8 +154,7 @@ func TestDeleteGenre(t *testing.T) {
 			test.Cb()
 		}
 
-		ctx, rec := newEchoContext(http.MethodDelete, "/", nil)
-		ctx.SetPath("/genre/:name")
+		ctx, rec := newEchoContext(http.MethodDelete, "/genre/:name", nil)
 		ctx.SetParamNames("name")
 		ctx.SetParamValues(test.Payload)
 		err := h.deleteGenre(ctx)
