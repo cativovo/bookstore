@@ -97,7 +97,7 @@ func TestCreateGenre(t *testing.T) {
 			Payload: `{"name": ""}`,
 		},
 		{
-			Err:     echo.NewHTTPError(http.StatusInternalServerError, "oops something went wrong"),
+			Err:     echo.NewHTTPError(http.StatusInternalServerError, messageGenericError),
 			Payload: `{"name": "error"}`,
 			Cb: func() {
 				memoryRepository.ReturnError = true
@@ -138,7 +138,7 @@ func TestDeleteGenre(t *testing.T) {
 			Payload: "Romance",
 		},
 		{
-			Err:     echo.NewHTTPError(http.StatusInternalServerError, "oops something went wrong"),
+			Err:     echo.NewHTTPError(http.StatusInternalServerError, messageGenericError),
 			Payload: "error",
 			Cb: func() {
 				memoryRepository.ReturnError = true
@@ -190,7 +190,7 @@ func TestCreateBook(t *testing.T) {
 		},
 		{
 			Payload: `{"title":"this is a title","author":"john doe","description":"this is a description","cover_image":"coverimage.com","genres":["horror"],"price":69}`,
-			Err:     echo.NewHTTPError(http.StatusInternalServerError, "oops something went wrong"),
+			Err:     echo.NewHTTPError(http.StatusInternalServerError, messageGenericError),
 			Cb: func() {
 				memoryRepository.ReturnError = true
 			},
@@ -228,7 +228,7 @@ func TestGetGenres(t *testing.T) {
 			},
 		},
 		{
-			Err: echo.NewHTTPError(http.StatusInternalServerError, "oops something went wrong"),
+			Err: echo.NewHTTPError(http.StatusInternalServerError, messageGenericError),
 			Cb: func() {
 				memoryRepository.ReturnError = true
 			},
@@ -267,7 +267,7 @@ func TestGetBooks(t *testing.T) {
 			Payload: "?page=0",
 		},
 		{
-			Err:     echo.NewHTTPError(http.StatusInternalServerError, "oops something went wrong"),
+			Err:     echo.NewHTTPError(http.StatusInternalServerError, messageGenericError),
 			Payload: "?page=1",
 			Cb: func() {
 				memoryRepository.ReturnError = true
