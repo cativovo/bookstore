@@ -2,6 +2,8 @@ package server
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -48,7 +50,7 @@ func (tt test) assert(t *testing.T, rec *httptest.ResponseRecorder, err error) {
 			}
 
 			if he.Code != tt.Err.Code {
-				t.Errorf("Expected: %v, Got: %v", tt.Code, he.Code)
+				t.Errorf("Expected: %v, Got: %v", tt.Err.Code, he.Code)
 			}
 		} else {
 			t.Fatalf("Invalid error %v", err)
@@ -240,6 +242,46 @@ func TestGetGenres(t *testing.T) {
 
 		ctx, rec := newEchoContext(http.MethodGet, "/genres", nil)
 		err := h.getGenres(ctx)
+		test.assert(t, rec, err)
+		memoryRepository.ReturnError = false
+	}
+
+	memoryRepository.Cleanup()
+}
+
+func TestGetBooks(t *testing.T) {
+	memoryRepository.Seed()
+	expectedBooks, err := json.Marshal(memoryRepository.Books[:10])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []test{
+		{
+			Code:    http.StatusOK,
+			Body:    fmt.Sprintf(`{"books":%s,"pages":11}`, string(expectedBooks)),
+			Payload: "?page=1",
+		},
+		{
+			Err:     echo.NewHTTPError(http.StatusBadRequest, "'page' should be greater than or equal to 1"),
+			Payload: "?page=0",
+		},
+		{
+			Err:     echo.NewHTTPError(http.StatusInternalServerError, "oops something went wrong"),
+			Payload: "?page=1",
+			Cb: func() {
+				memoryRepository.ReturnError = true
+			},
+		},
+	}
+
+	for _, test := range tests {
+		if test.Cb != nil {
+			test.Cb()
+		}
+
+		ctx, rec := newEchoContext(http.MethodGet, "/books"+test.Payload, nil)
+		err := h.getBooks(ctx)
 		test.assert(t, rec, err)
 		memoryRepository.ReturnError = false
 	}
