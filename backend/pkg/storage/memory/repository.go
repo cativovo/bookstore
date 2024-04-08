@@ -24,6 +24,9 @@ func NewMemoryRepository() *MemoryRepository {
 }
 
 func (m *MemoryRepository) CreateGenre(name string) error {
+	if m.ReturnError {
+		return errors.New("error")
+	}
 	if slices.Contains(m.Genres, name) {
 		return book.ErrAlreadyExists
 	}
@@ -32,6 +35,10 @@ func (m *MemoryRepository) CreateGenre(name string) error {
 }
 
 func (m *MemoryRepository) DeleteGenre(name string) error {
+	if m.ReturnError {
+		return errors.New("error")
+	}
+
 	genres := make([]string, 0)
 
 	for _, v := range m.Genres {
@@ -50,6 +57,10 @@ func (m *MemoryRepository) DeleteGenre(name string) error {
 }
 
 func (m *MemoryRepository) CreateBook(b book.Book) (book.Book, error) {
+	if m.ReturnError {
+		return book.Book{}, errors.New("error")
+	}
+
 	bookId++
 	b.Id = strconv.Itoa(bookId)
 	return b, nil
@@ -69,5 +80,6 @@ func (m *MemoryRepository) GetGenres() ([]string, error) {
 func (m *MemoryRepository) Cleanup() {
 	m.Books = make(map[string]book.Book)
 	m.Genres = make([]string, 0)
+	m.ReturnError = false
 	bookId = 0
 }

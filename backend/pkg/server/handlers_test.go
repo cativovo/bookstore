@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -24,7 +25,7 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-type Expected struct {
+type test struct {
 	Err     *echo.HTTPError
 	Cb      func()
 	Payload string
@@ -32,42 +33,51 @@ type Expected struct {
 	Code    int
 }
 
-func (e Expected) test(t *testing.T, rec *httptest.ResponseRecorder, err error) {
+func (tt test) assert(t *testing.T, rec *httptest.ResponseRecorder, err error) {
+	if tt.Err != nil && err == nil {
+		t.Errorf("Expected: %v, Got: %v", tt.Err, err)
+		return
+	}
+
 	if err != nil {
 		// https://github.com/labstack/echo/issues/593#issuecomment-230926351
 		he, ok := err.(*echo.HTTPError)
 		if ok {
-			if he.Error() != e.Err.Error() {
-				t.Errorf("Expected: %v, Got: %v", e.Err.Error(), err.Error())
+			if he.Error() != tt.Err.Error() {
+				t.Errorf("Expected: %v, Got: %v", tt.Err.Error(), err.Error())
 			}
 
-			if he.Code != e.Err.Code {
-				t.Errorf("Expected: %v, Got: %v", e.Code, he.Code)
+			if he.Code != tt.Err.Code {
+				t.Errorf("Expected: %v, Got: %v", tt.Code, he.Code)
 			}
 		} else {
 			t.Fatalf("Invalid error %v", err)
 		}
-	} else {
-		if rec.Code != e.Code {
-			t.Errorf("Expected: %v, Got: %v", e.Code, rec.Code)
-		}
+		return
+	}
 
-		body := strings.TrimSpace(rec.Body.String())
-		if body != e.Body {
-			t.Errorf("Expected: %v, Got: %v", e.Body, body)
-		}
+	if rec.Code != tt.Code {
+		t.Errorf("Expected: %v, Got: %v", tt.Code, rec.Code)
+	}
+
+	body := strings.TrimSpace(rec.Body.String())
+	if body != tt.Body {
+		t.Errorf("Expected: %v, Got: %v", tt.Body, body)
 	}
 }
 
-func NewEchoContext(method string, target string, body io.Reader) (echo.Context, *httptest.ResponseRecorder) {
+func newEchoContext(method string, target string, body io.Reader) (echo.Context, *httptest.ResponseRecorder) {
 	req := httptest.NewRequest(method, target, body)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
-	return e.NewContext(req, rec), rec
+	ctx := e.NewContext(req, rec)
+	ctx.Logger().SetOutput(bytes.NewBuffer([]byte{}))
+
+	return ctx, rec
 }
 
 func TestCreateGenre(t *testing.T) {
-	tests := []Expected{
+	tests := []test{
 		{
 			Payload: `{"name": "horror"}`,
 			Code:    http.StatusCreated,
@@ -75,27 +85,33 @@ func TestCreateGenre(t *testing.T) {
 		{
 			Err:     echo.NewHTTPError(http.StatusBadRequest, "invalid json"),
 			Payload: `[]`,
-			Code:    http.StatusBadRequest,
 		},
 		{
 			Err:     echo.NewHTTPError(http.StatusBadRequest, "genre 'horror' already exists"),
 			Payload: `{"name": "horror"}`,
-			Code:    http.StatusBadRequest,
 		},
 		{
 			Err:     echo.NewHTTPError(http.StatusBadRequest, "'name' is required"),
 			Payload: `{"name": ""}`,
-			Code:    http.StatusBadRequest,
+		},
+		{
+			Err:     echo.NewHTTPError(http.StatusInternalServerError, "oops something went wrong"),
+			Payload: `{"name": "error"}`,
+			Cb: func() {
+				memoryRepository.ReturnError = true
+			},
 		},
 	}
 
-	for _, expected := range tests {
-		req := httptest.NewRequest(http.MethodPost, "/genre", strings.NewReader(expected.Payload))
-		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		rec := httptest.NewRecorder()
-		ctx := e.NewContext(req, rec)
+	for _, test := range tests {
+		if test.Cb != nil {
+			test.Cb()
+		}
+
+		ctx, rec := newEchoContext(http.MethodPost, "/genre", strings.NewReader(test.Payload))
 		err := h.createGenre(ctx)
-		expected.test(t, rec, err)
+		test.assert(t, rec, err)
+		memoryRepository.ReturnError = false
 	}
 
 	expectedLen := 1
@@ -108,37 +124,47 @@ func TestCreateGenre(t *testing.T) {
 }
 
 func TestDeleteGenre(t *testing.T) {
-	tests := []Expected{
+	memoryRepository.Genres = []string{"Horror", "Comedy"}
+
+	tests := []test{
 		{
-			Payload: "horror",
+			Payload: "Horror",
 			Code:    http.StatusNoContent,
 		},
 		{
 			Err:     echo.NewHTTPError(http.StatusNotFound, "genre not found"),
-			Payload: "notfound",
-			Code:    http.StatusNotFound,
+			Payload: "Romance",
+		},
+		{
+			Err:     echo.NewHTTPError(http.StatusInternalServerError, "oops something went wrong"),
+			Payload: "error",
+			Cb: func() {
+				memoryRepository.ReturnError = true
+			},
 		},
 	}
 
 	memoryRepository.Genres = append(memoryRepository.Genres, "horror")
 
-	for _, expected := range tests {
-		req := httptest.NewRequest(http.MethodDelete, "/", nil)
-		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		rec := httptest.NewRecorder()
-		ctx := e.NewContext(req, rec)
+	for _, test := range tests {
+		if test.Cb != nil {
+			test.Cb()
+		}
+
+		ctx, rec := newEchoContext(http.MethodDelete, "/", nil)
 		ctx.SetPath("/genre/:name")
 		ctx.SetParamNames("name")
-		ctx.SetParamValues(expected.Payload)
+		ctx.SetParamValues(test.Payload)
 		err := h.deleteGenre(ctx)
-		expected.test(t, rec, err)
+		test.assert(t, rec, err)
+		memoryRepository.ReturnError = false
 	}
 
 	memoryRepository.Cleanup()
 }
 
 func TestCreateBook(t *testing.T) {
-	tests := []Expected{
+	tests := []test{
 		{
 			Payload: `{"title":"this is a title","author":"john doe","description":"this is a description","cover_image":"coverimage.com","genres":["horror"],"price":69}`,
 			Code:    http.StatusCreated,
@@ -160,22 +186,31 @@ func TestCreateBook(t *testing.T) {
 			Payload: `{"title":"this is a title","author":"john doe","description":"this is a description","cover_image":"coverimage.com","price":69}`,
 			Err:     echo.NewHTTPError(http.StatusBadRequest, "'genres' is required"),
 		},
+		{
+			Payload: `{"title":"this is a title","author":"john doe","description":"this is a description","cover_image":"coverimage.com","genres":["horror"],"price":69}`,
+			Err:     echo.NewHTTPError(http.StatusInternalServerError, "oops something went wrong"),
+			Cb: func() {
+				memoryRepository.ReturnError = true
+			},
+		},
 	}
 
-	for _, expected := range tests {
-		req := httptest.NewRequest(http.MethodPost, "/book", strings.NewReader(expected.Payload))
-		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		rec := httptest.NewRecorder()
-		ctx := e.NewContext(req, rec)
+	for _, test := range tests {
+		if test.Cb != nil {
+			test.Cb()
+		}
+
+		ctx, rec := newEchoContext(http.MethodPost, "/book", strings.NewReader(test.Payload))
 		err := h.createBook(ctx)
-		expected.test(t, rec, err)
+		test.assert(t, rec, err)
+		memoryRepository.ReturnError = false
 	}
 
 	memoryRepository.Cleanup()
 }
 
 func TestGetGenres(t *testing.T) {
-	tests := []Expected{
+	tests := []test{
 		{
 			Code: http.StatusOK,
 			Body: `["Horror","Comedy"]`,
@@ -198,14 +233,16 @@ func TestGetGenres(t *testing.T) {
 		},
 	}
 
-	for _, expected := range tests {
-		if expected.Cb != nil {
-			expected.Cb()
+	for _, test := range tests {
+		if test.Cb != nil {
+			test.Cb()
 		}
 
-		ctx, rec := NewEchoContext(http.MethodGet, "/genres", nil)
+		ctx, rec := newEchoContext(http.MethodGet, "/genres", nil)
 		err := h.getGenres(ctx)
-		expected.test(t, rec, err)
-		memoryRepository.Cleanup()
+		test.assert(t, rec, err)
+		memoryRepository.ReturnError = false
 	}
+
+	memoryRepository.Cleanup()
 }
