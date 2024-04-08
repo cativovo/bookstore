@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -282,6 +283,49 @@ func TestGetBooks(t *testing.T) {
 
 		ctx, rec := newEchoContext(http.MethodGet, "/books"+test.Payload, nil)
 		err := h.getBooks(ctx)
+		test.assert(t, rec, err)
+		memoryRepository.ReturnError = false
+	}
+
+	memoryRepository.Cleanup()
+}
+
+func TestGetBookById(t *testing.T) {
+	memoryRepository.Seed()
+	expectedBook := memoryRepository.Books[rand.IntN(len(memoryRepository.Books))]
+	expectedBookBytes, err := json.Marshal(expectedBook)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []test{
+		{
+			Payload: expectedBook.Id,
+			Code:    http.StatusOK,
+			Body:    string(expectedBookBytes),
+		},
+		{
+			Payload: "404",
+			Err:     echo.NewHTTPError(http.StatusNotFound, "book not found"),
+		},
+		{
+			Payload: expectedBook.Id,
+			Err:     echo.NewHTTPError(http.StatusInternalServerError, messageGenericError),
+			Cb: func() {
+				memoryRepository.ReturnError = true
+			},
+		},
+	}
+
+	for _, test := range tests {
+		if test.Cb != nil {
+			test.Cb()
+		}
+
+		ctx, rec := newEchoContext(http.MethodGet, "/book/:id", nil)
+		ctx.SetParamNames("id")
+		ctx.SetParamValues(test.Payload)
+		err := h.getBookById(ctx)
 		test.assert(t, rec, err)
 		memoryRepository.ReturnError = false
 	}

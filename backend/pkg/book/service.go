@@ -30,6 +30,7 @@ type GetBooksOptions struct {
 
 type BookRepository interface {
 	GetBooks(options GetBooksOptions) (books []Book, count int, err error)
+	GetBookById(id string) (Book, error)
 	GetGenres() ([]string, error)
 	CreateGenre(name string) error
 	DeleteGenre(name string) error
@@ -64,6 +65,10 @@ func (bs *BookService) CreateBook(b Book) (Book, error) {
 
 func (bs *BookService) GetBooks(options GetBooksOptions) (books []Book, count int, err error) {
 	return bs.repository.GetBooks(options)
+}
+
+func (bs *BookService) GetBookById(id string) (Book, error) {
+	return bs.repository.GetBookById(id)
 }
 
 func (bs *BookService) GetGenres() ([]string, error) {

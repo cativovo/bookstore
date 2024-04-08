@@ -87,41 +87,88 @@ func (q *Queries) DeleteGenre(ctx context.Context, id pgtype.UUID) (int64, error
 	return result.RowsAffected(), nil
 }
 
+const getBookById = `-- name: GetBookById :one
+SELECT
+  book.id,
+  book.title,
+  book.description,
+  book.author,
+  book.price,
+  book.cover_image,
+  COALESCE(ARRAY_AGG(genre.name) FILTER (WHERE genre.name IS NOT NULL), '{}') AS genres
+FROM
+  book
+LEFT JOIN
+  book_genre ON book_genre.book_id = book.id
+LEFT JOIN
+  genre ON genre.id = book_genre.genre_id
+WHERE
+  book.id = $1
+GROUP BY
+  book.id
+`
+
+type GetBookByIdRow struct {
+	ID          pgtype.UUID
+	Title       string
+	Description pgtype.Text
+	Author      string
+	Price       pgtype.Numeric
+	CoverImage  pgtype.Text
+	Genres      interface{}
+}
+
+func (q *Queries) GetBookById(ctx context.Context, id pgtype.UUID) (GetBookByIdRow, error) {
+	row := q.db.QueryRow(ctx, getBookById, id)
+	var i GetBookByIdRow
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Description,
+		&i.Author,
+		&i.Price,
+		&i.CoverImage,
+		&i.Genres,
+	)
+	return i, err
+}
+
 const getBooks = `-- name: GetBooks :one
 SELECT (
   SELECT
     COUNT(id)
   FROM
     book
-) as count,
+) AS count,
 (
   SELECT 
     JSON_AGG(rows.*)
   FROM
-    (SELECT
-      book.id as id,
-      book.title as title,
-      book.description as description,
-      book.author as author,
-      book.price as price,
-      book.cover_image as cover_image,
-      COALESCE(ARRAY_AGG(genre.name) FILTER (WHERE genre.name IS NOT NULL), '{}') AS genres
-    FROM
-      book
-    LEFT JOIN
-      book_genre ON book_genre.book_id = book.id
-    LEFT JOIN
-      genre ON genre.id = book_genre.genre_id
-    GROUP BY
-      book.id
-    ORDER BY
-      title ASC
-    LIMIT 
-      $1
-    OFFSET 
-      $2
-    ) as rows
-) as books
+    (
+      SELECT
+        book.id AS id,
+        book.title AS title,
+        book.description AS description,
+        book.author AS author,
+        book.price AS price,
+        book.cover_image AS cover_image,
+        COALESCE(ARRAY_AGG(genre.name) FILTER (WHERE genre.name IS NOT NULL), '{}') AS genres
+      FROM
+        book
+      LEFT JOIN
+        book_genre ON book_genre.book_id = book.id
+      LEFT JOIN
+        genre ON genre.id = book_genre.genre_id
+      GROUP BY
+        book.id
+      ORDER BY
+        title ASC
+      LIMIT 
+        $1
+      OFFSET 
+        $2
+    ) AS rows
+) AS books
 `
 
 type GetBooksParams struct {

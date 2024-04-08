@@ -64,5 +64,25 @@ SELECT (
     ) AS rows
 ) AS books;
 
+-- name: GetBookById :one
+SELECT
+  book.id,
+  book.title,
+  book.description,
+  book.author,
+  book.price,
+  book.cover_image,
+  COALESCE(ARRAY_AGG(genre.name) FILTER (WHERE genre.name IS NOT NULL), '{}') AS genres
+FROM
+  book
+LEFT JOIN
+  book_genre ON book_genre.book_id = book.id
+LEFT JOIN
+  genre ON genre.id = book_genre.genre_id
+WHERE
+  book.id = $1
+GROUP BY
+  book.id;
+
 -- name: GetGenres :many
 SELECT name FROM genre;

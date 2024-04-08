@@ -75,6 +75,22 @@ func (m *MemoryRepository) GetBooks(options book.GetBooksOptions) ([]book.Book, 
 	return m.Books[options.Offset : options.Offset+options.Limit], len(m.Books), nil
 }
 
+func (m *MemoryRepository) GetBookById(id string) (book.Book, error) {
+	if m.ReturnError {
+		return book.Book{}, errors.New("error")
+	}
+
+	i := slices.IndexFunc(m.Books, func(b book.Book) bool {
+		return b.Id == id
+	})
+
+	if i < 0 {
+		return book.Book{}, book.ErrNotFound
+	}
+
+	return m.Books[i], nil
+}
+
 func (m *MemoryRepository) GetGenres() ([]string, error) {
 	if m.ReturnError {
 		return nil, errors.New("error")

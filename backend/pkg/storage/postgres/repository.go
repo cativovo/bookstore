@@ -177,3 +177,42 @@ func (pr *PostgresRepository) GetGenres() ([]string, error) {
 
 	return genres, nil
 }
+
+func (pr *PostgresRepository) GetBookById(id string) (book.Book, error) {
+	var uuid pgtype.UUID
+	if err := uuid.Scan(id); err != nil {
+		return book.Book{}, book.ErrNotFound
+	}
+
+	b, err := pr.queries.GetBookById(pr.ctx, uuid)
+	if err != nil {
+		switch err {
+		case pgx.ErrNoRows:
+			return book.Book{}, book.ErrNotFound
+		default:
+			return book.Book{}, err
+		}
+	}
+
+	priceFloatValue, err := b.Price.Float64Value()
+	if err != nil {
+		return book.Book{}, err
+	}
+
+	genresInterface := b.Genres.([]interface{})
+	genres := make([]string, len(genresInterface))
+
+	for i, genre := range genresInterface {
+		genres[i] = genre.(string)
+	}
+
+	return book.Book{
+		Id:          id,
+		Author:      b.Author,
+		Title:       b.Title,
+		Price:       priceFloatValue.Float64,
+		CoverImage:  b.CoverImage.String,
+		Description: b.Description.String,
+		Genres:      genres,
+	}, nil
+}

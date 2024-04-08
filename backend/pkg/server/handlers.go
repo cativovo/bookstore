@@ -22,6 +22,7 @@ func (s *Server) registerHandlers() {
 	}
 
 	s.echo.GET("/books", h.getBooks)
+	s.echo.GET("/book/:id", h.getBookById)
 	s.echo.GET("/genres", h.getGenres)
 	s.echo.POST("/genre", h.createGenre)
 	s.echo.DELETE("/genre/:name", h.deleteGenre)
@@ -61,6 +62,21 @@ func (h *handler) getBooks(ctx echo.Context) error {
 		"books": books,
 		"pages": pages,
 	})
+}
+
+func (h *handler) getBookById(ctx echo.Context) error {
+	id := ctx.Param("id")
+	b, err := h.bookService.GetBookById(id)
+	if err != nil {
+		if errors.Is(err, book.ErrNotFound) {
+			return echo.NewHTTPError(http.StatusNotFound, "book not found")
+		}
+
+		ctx.Logger().Error(err)
+		return echo.NewHTTPError(http.StatusInternalServerError, messageGenericError)
+	}
+
+	return ctx.JSON(http.StatusOK, b)
 }
 
 func (h *handler) getGenres(ctx echo.Context) error {
