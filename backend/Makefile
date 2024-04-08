@@ -7,6 +7,9 @@ export DB_PORT=8989
 dev:
 	air
 
+seed:
+	go run ./cmd/seed
+
 sqlc_generate:
 	sqlc generate
 
