@@ -21,12 +21,17 @@ func (s *Server) registerHandlers() {
 		bookService: s.bookService,
 	}
 
+	s.echo.GET("/health", h.healthCheck)
 	s.echo.GET("/books", h.getBooks)
 	s.echo.GET("/book/:id", h.getBookById)
 	s.echo.GET("/genres", h.getGenres)
 	s.echo.POST("/genre", h.createGenre)
 	s.echo.DELETE("/genre/:name", h.deleteGenre)
 	s.echo.POST("/book", h.createBook)
+}
+
+func (h *handler) healthCheck(ctx echo.Context) error {
+	return ctx.String(http.StatusOK, "ok")
 }
 
 type getBooksQueryParam struct {
