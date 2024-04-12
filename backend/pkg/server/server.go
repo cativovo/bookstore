@@ -15,6 +15,7 @@ func NewServer(bs *book.BookService) *Server {
 	e := echo.New()
 	e.Validator = NewValidator()
 	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
 
 	s := &Server{
 		echo:        e,
