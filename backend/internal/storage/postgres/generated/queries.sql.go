@@ -162,7 +162,7 @@ SELECT (
       GROUP BY
         book.id
       ORDER BY 
-        -- will produce title ASC, author ASC OR author DESC, title DESC
+        -- will produce title ASC/DESC, author ASC/DESC OR author ASC/DESC, title ASC/DESC
         CASE
           WHEN $3::boolean AND $4::text = 'title' THEN title
           WHEN $3::boolean AND $4::text = 'author' THEN author

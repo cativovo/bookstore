@@ -9,8 +9,8 @@ import (
 	"sync"
 
 	"github.com/brianvoe/gofakeit/v7"
-	"github.com/cativovo/bookstore/pkg/book"
-	"github.com/cativovo/bookstore/pkg/storage/postgres"
+	"github.com/cativovo/bookstore/internal/book"
+	"github.com/cativovo/bookstore/internal/storage/postgres"
 )
 
 const (

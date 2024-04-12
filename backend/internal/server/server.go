@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/cativovo/bookstore/pkg/book"
+	"github.com/cativovo/bookstore/internal/book"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )

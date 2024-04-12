@@ -5,9 +5,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/cativovo/bookstore/pkg/book"
-	"github.com/cativovo/bookstore/pkg/server"
-	"github.com/cativovo/bookstore/pkg/storage/postgres"
+	"github.com/cativovo/bookstore/internal/book"
+	"github.com/cativovo/bookstore/internal/server"
+	"github.com/cativovo/bookstore/internal/storage/postgres"
 )
 
 func main() {

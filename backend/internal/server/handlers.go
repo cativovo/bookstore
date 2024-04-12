@@ -6,7 +6,7 @@ import (
 	"math"
 	"net/http"
 
-	"github.com/cativovo/bookstore/pkg/book"
+	"github.com/cativovo/bookstore/internal/book"
 	"github.com/labstack/echo/v4"
 )
 

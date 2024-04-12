@@ -6,8 +6,8 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/cativovo/bookstore/pkg/book"
-	query "github.com/cativovo/bookstore/pkg/storage/postgres/generated"
+	"github.com/cativovo/bookstore/internal/book"
+	query "github.com/cativovo/bookstore/internal/storage/postgres/generated"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
