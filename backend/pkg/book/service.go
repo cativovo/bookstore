@@ -13,19 +13,12 @@ type GetBooksFilter struct {
 	Genres      []string
 }
 
-type SortOrder int
-
-const (
-	SortASC = iota
-	SortDesc
-)
-
 type GetBooksOptions struct {
-	SortBy    string
-	Filter    GetBooksFilter
-	Limit     int
-	Offset    int
-	SortOrder SortOrder
+	OrderBy string
+	Filter  GetBooksFilter
+	Limit   int
+	Offset  int
+	Desc    bool
 }
 
 type BookRepository interface {

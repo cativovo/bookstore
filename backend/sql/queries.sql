@@ -55,8 +55,26 @@ SELECT (
         genre ON genre.id = book_genre.genre_id
       GROUP BY
         book.id
-      ORDER BY
-        title ASC
+      ORDER BY 
+        -- will produce title ASC/DESC, author ASC/DESC OR author ASC/DESC, title ASC/DESC
+        CASE
+          WHEN @descending::boolean AND @order_by::text = 'title' THEN title
+          WHEN @descending::boolean AND @order_by::text = 'author' THEN author
+          WHEN @descending::boolean THEN title
+        END DESC,
+        CASE
+          WHEN @descending::boolean AND @order_by::text = 'author' THEN title
+          WHEN @descending::boolean THEN author
+        END DESC,
+        CASE
+          WHEN NOT @descending::boolean AND @order_by::text = 'title' THEN title
+          WHEN NOT @descending::boolean AND @order_by::text = 'author' THEN author
+          WHEN NOT @descending::boolean THEN title
+        END ASC,
+        CASE
+          WHEN NOT @descending::boolean AND @order_by::text = 'author' THEN title
+          WHEN NOT @descending::boolean THEN author
+        END ASC
       LIMIT 
         $1
       OFFSET 

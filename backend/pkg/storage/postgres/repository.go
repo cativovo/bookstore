@@ -149,8 +149,10 @@ func (pr *PostgresRepository) CreateBook(b book.Book) (book.Book, error) {
 
 func (pr *PostgresRepository) GetBooks(opts book.GetBooksOptions) ([]book.Book, int, error) {
 	row, err := pr.queries.GetBooks(pr.ctx, query.GetBooksParams{
-		Limit:  int32(opts.Limit),
-		Offset: int32(opts.Offset),
+		Limit:      int32(opts.Limit),
+		Offset:     int32(opts.Offset),
+		OrderBy:    opts.OrderBy,
+		Descending: opts.Desc,
 	})
 	if err != nil {
 		return nil, 0, err

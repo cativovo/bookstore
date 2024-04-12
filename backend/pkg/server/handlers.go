@@ -31,7 +31,9 @@ func (s *Server) registerHandlers() {
 
 type getBooksQueryParam struct {
 	// json tag is used by err.Field() of validator, the order of tags should always be query > json
-	Page int `query:"page" json:"page" validate:"gte=1"`
+	OrderBy string `query:"order_by" json:"order_by"`
+	Desc    bool   `query:"desc" json:"desc"`
+	Page    int    `query:"page" json:"page" validate:"gte=1"`
 }
 
 func (h *handler) getBooks(ctx echo.Context) error {
@@ -48,8 +50,10 @@ func (h *handler) getBooks(ctx echo.Context) error {
 
 	books, count, err := h.bookService.GetBooks(
 		book.GetBooksOptions{
-			Limit:  limit,
-			Offset: (queryParam.Page - 1) * limit,
+			Limit:   limit,
+			Offset:  (queryParam.Page - 1) * limit,
+			OrderBy: queryParam.OrderBy,
+			Desc:    queryParam.Desc,
 		},
 	)
 	if err != nil {

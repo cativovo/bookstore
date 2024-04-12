@@ -161,8 +161,26 @@ SELECT (
         genre ON genre.id = book_genre.genre_id
       GROUP BY
         book.id
-      ORDER BY
-        title ASC
+      ORDER BY 
+        -- will produce title ASC, author ASC OR author DESC, title DESC
+        CASE
+          WHEN $3::boolean AND $4::text = 'title' THEN title
+          WHEN $3::boolean AND $4::text = 'author' THEN author
+          WHEN $3::boolean THEN title
+        END DESC,
+        CASE
+          WHEN $3::boolean AND $4::text = 'author' THEN title
+          WHEN $3::boolean THEN author
+        END DESC,
+        CASE
+          WHEN NOT $3::boolean AND $4::text = 'title' THEN title
+          WHEN NOT $3::boolean AND $4::text = 'author' THEN author
+          WHEN NOT $3::boolean THEN title
+        END ASC,
+        CASE
+          WHEN NOT $3::boolean AND $4::text = 'author' THEN title
+          WHEN NOT $3::boolean THEN author
+        END ASC
       LIMIT 
         $1
       OFFSET 
@@ -172,8 +190,10 @@ SELECT (
 `
 
 type GetBooksParams struct {
-	Limit  int32
-	Offset int32
+	Limit      int32
+	Offset     int32
+	Descending bool
+	OrderBy    string
 }
 
 type GetBooksRow struct {
@@ -182,7 +202,12 @@ type GetBooksRow struct {
 }
 
 func (q *Queries) GetBooks(ctx context.Context, arg GetBooksParams) (GetBooksRow, error) {
-	row := q.db.QueryRow(ctx, getBooks, arg.Limit, arg.Offset)
+	row := q.db.QueryRow(ctx, getBooks,
+		arg.Limit,
+		arg.Offset,
+		arg.Descending,
+		arg.OrderBy,
+	)
 	var i GetBooksRow
 	err := row.Scan(&i.Count, &i.Books)
 	return i, err
