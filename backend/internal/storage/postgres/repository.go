@@ -158,9 +158,12 @@ func (pr *PostgresRepository) GetBooks(opts book.GetBooksOptions) ([]book.Book, 
 		return nil, 0, err
 	}
 
-	var books []book.Book
-	if err := json.Unmarshal(row.Books, &books); err != nil {
-		return nil, 0, err
+	books := make([]book.Book, 0)
+
+	if len(row.Books) > 0 {
+		if err := json.Unmarshal(row.Books, &books); err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return books, int(row.Count), nil
