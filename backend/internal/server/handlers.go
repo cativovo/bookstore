@@ -14,7 +14,10 @@ type handler struct {
 	bookService *book.BookService
 }
 
-const messageGenericError = "oops something went wrong"
+const (
+	messageInternalServerError = "oops something went wrong"
+	messageBindError           = "unable to parse the request"
+)
 
 func (s *Server) registerHandlers() {
 	h := handler{
@@ -63,7 +66,7 @@ func (h *handler) getBooks(ctx echo.Context) error {
 	)
 	if err != nil {
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, messageGenericError)
+		return echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError)
 	}
 	pages := math.Ceil(float64(count) / limit)
 
@@ -82,7 +85,7 @@ func (h *handler) getBookById(ctx echo.Context) error {
 		}
 
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, messageGenericError)
+		return echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError)
 	}
 
 	return ctx.JSON(http.StatusOK, b)
@@ -92,7 +95,7 @@ func (h *handler) getGenres(ctx echo.Context) error {
 	genres, err := h.bookService.GetGenres()
 	if err != nil {
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, messageGenericError)
+		return echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError)
 	}
 
 	return ctx.JSON(http.StatusOK, genres)
@@ -119,7 +122,7 @@ func (h *handler) createGenre(ctx echo.Context) error {
 		}
 
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, messageGenericError)
+		return echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError)
 	}
 
 	return ctx.NoContent(http.StatusCreated)
@@ -133,7 +136,7 @@ func (h *handler) deleteGenre(ctx echo.Context) error {
 		}
 
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, messageGenericError)
+		return echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError)
 	}
 
 	return ctx.NoContent(http.StatusNoContent)
@@ -172,7 +175,7 @@ func (h *handler) createBook(ctx echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, "invalid genre")
 		}
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, messageGenericError)
+		return echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError)
 	}
 
 	return ctx.JSON(http.StatusCreated, b)

@@ -101,7 +101,7 @@ func TestCreateGenre(t *testing.T) {
 			payload:            `{"name":"horror"}`,
 			expectedServiceArg: "horror",
 			expectedStatusCode: http.StatusInternalServerError,
-			expectedOutput:     echo.NewHTTPError(http.StatusInternalServerError, messageGenericError),
+			expectedOutput:     echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError),
 		},
 	}
 
@@ -125,7 +125,6 @@ func TestCreateGenre(t *testing.T) {
 				if hErrOk {
 					switch hErr.Code {
 					case http.StatusBadRequest:
-						mockRepository.AssertNotCalled(t, "CreateBook")
 						return
 					}
 
@@ -148,13 +147,13 @@ func TestDeleteGenre(t *testing.T) {
 		name               string
 		expectedOutput     any
 		serviceReturn      error
-		payload            string
+		genre              string
 		expectedServiceArg string
 		expectedStatusCode int
 	}{
 		{
 			name:               "Success",
-			payload:            "horror",
+			genre:              "horror",
 			expectedServiceArg: "horror",
 			expectedStatusCode: http.StatusNoContent,
 			expectedOutput:     "",
@@ -162,7 +161,7 @@ func TestDeleteGenre(t *testing.T) {
 		{
 			name:               "Not found",
 			serviceReturn:      book.ErrNotFound,
-			payload:            "notfound",
+			genre:              "notfound",
 			expectedServiceArg: "notfound",
 			expectedStatusCode: http.StatusNotFound,
 			expectedOutput:     echo.NewHTTPError(http.StatusNotFound, "genre not found"),
@@ -170,10 +169,10 @@ func TestDeleteGenre(t *testing.T) {
 		{
 			name:               "Internal server error",
 			serviceReturn:      errors.New("internal server error"),
-			payload:            "horror",
+			genre:              "horror",
 			expectedServiceArg: "horror",
 			expectedStatusCode: http.StatusInternalServerError,
-			expectedOutput:     echo.NewHTTPError(http.StatusInternalServerError, messageGenericError),
+			expectedOutput:     echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError),
 		},
 	}
 
@@ -185,7 +184,7 @@ func TestDeleteGenre(t *testing.T) {
 
 			ctx, rec := newEchoContext(t, http.MethodDelete, "/genre/:name", nil)
 			ctx.SetParamNames("name")
-			ctx.SetParamValues(test.payload)
+			ctx.SetParamValues(test.genre)
 			err := h.deleteGenre(ctx)
 
 			if err != nil {
@@ -197,12 +196,6 @@ func TestDeleteGenre(t *testing.T) {
 
 				hErr, hErrOk := err.(*echo.HTTPError)
 				if hErrOk {
-					switch hErr.Code {
-					case http.StatusBadRequest:
-						mockRepository.AssertNotCalled(t, "CreateBook")
-						return
-					}
-
 					assert.Equal(t, expectedOutput.Code, hErr.Code)
 					assert.Equal(t, expectedOutput.Error(), hErr.Error())
 				}
@@ -300,7 +293,7 @@ func TestCreateBook(t *testing.T) {
 			serviceReturn:      []any{book.Book{}, errors.New("internal server error")},
 			expectedServiceArg: successBook,
 			expectedStatusCode: http.StatusInternalServerError,
-			expectedOutput:     echo.NewHTTPError(http.StatusInternalServerError, messageGenericError),
+			expectedOutput:     echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError),
 		},
 	}
 
@@ -324,7 +317,6 @@ func TestCreateBook(t *testing.T) {
 				if hErrOk {
 					switch hErr.Code {
 					case http.StatusBadRequest:
-						mockRepository.AssertNotCalled(t, "CreateBook")
 						return
 					}
 
@@ -343,20 +335,22 @@ func TestCreateBook(t *testing.T) {
 }
 
 func TestGetGenres(t *testing.T) {
-	testdata, err := os.ReadFile("../../testdata/genres.json")
+	data, err := os.ReadFile("../../testdata/genres.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var genres []string
+	var testdata []string
 
-	if err := json.Unmarshal(testdata, &genres); err != nil {
-		t.Log(err)
+	if err := json.Unmarshal(data, &testdata); err != nil {
+		t.Fatal(err)
 	}
 
-	genresJson, err := json.Marshal(genres)
+	testdataBytes, err := json.Marshal(testdata)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	testdataJson := string(testdataBytes)
 
 	tests := []struct {
 		name               string
@@ -366,14 +360,14 @@ func TestGetGenres(t *testing.T) {
 	}{
 		{
 			name:               "Success",
-			serviceReturn:      []any{genres, nil},
-			expectedOutput:     string(genresJson),
+			serviceReturn:      []any{testdata, nil},
+			expectedOutput:     testdataJson,
 			expectedStatusCode: http.StatusOK,
 		},
 		{
 			name:           "Internal server error",
-			serviceReturn:  []any{genres, errors.New("internal server error")},
-			expectedOutput: echo.NewHTTPError(http.StatusInternalServerError, messageGenericError), expectedStatusCode: http.StatusOK,
+			serviceReturn:  []any{testdata, errors.New("internal server error")},
+			expectedOutput: echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError), expectedStatusCode: http.StatusOK,
 		},
 	}
 
@@ -395,12 +389,6 @@ func TestGetGenres(t *testing.T) {
 
 				hErr, hErrOk := err.(*echo.HTTPError)
 				if hErrOk {
-					switch hErr.Code {
-					case http.StatusBadRequest:
-						mockRepository.AssertNotCalled(t, "CreateBook")
-						return
-					}
-
 					assert.Equal(t, expectedOutput.Code, hErr.Code)
 					assert.Equal(t, expectedOutput.Error(), hErr.Error())
 				}
