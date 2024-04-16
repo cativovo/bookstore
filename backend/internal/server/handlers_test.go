@@ -22,7 +22,8 @@ type MockBookRepository struct {
 }
 
 func (m *MockBookRepository) GetBooks(options book.GetBooksOptions) (books []book.Book, count int, err error) {
-	return nil, 0, nil
+	args := m.Called(options)
+	return args.Get(0).([]book.Book), args.Int(1), args.Error(2)
 }
 
 func (m *MockBookRepository) GetBookById(id string) (book.Book, error) {
@@ -400,46 +401,115 @@ func TestGetGenres(t *testing.T) {
 	}
 }
 
-//
-// func TestGetBooks(t *testing.T) {
-// 	memoryRepository.Seed()
-// 	expectedBooks, err := json.Marshal(memoryRepository.Books[:10])
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-//
-// 	tests := []testold{
-// 		{
-// 			Code:    http.StatusOK,
-// 			Body:    fmt.Sprintf(`{"books":%s,"pages":11}`, string(expectedBooks)),
-// 			Payload: "?page=1",
-// 		},
-// 		{
-// 			Err:     echo.NewHTTPError(http.StatusBadRequest, "'page' should be greater than or equal to 1"),
-// 			Payload: "?page=0",
-// 		},
-// 		{
-// 			Err:     echo.NewHTTPError(http.StatusInternalServerError, messageGenericError),
-// 			Payload: "?page=1",
-// 			Cb: func() {
-// 				memoryRepository.ReturnError = true
-// 			},
-// 		},
-// 	}
-//
-// 	for _, test := range tests {
-// 		if test.Cb != nil {
-// 			test.Cb()
-// 		}
-//
-// 		ctx, rec := newEchoContext(http.MethodGet, "/books"+test.Payload, nil)
-// 		err := hold.getBooks(ctx)
-// 		test.assert(t, rec, err)
-// 		memoryRepository.ReturnError = false
-// 	}
-//
-// 	memoryRepository.Cleanup()
-// }
+func TestGetBooks(t *testing.T) {
+	data, err := os.ReadFile("../../testdata/books.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var testdata []book.Book
+
+	if err := json.Unmarshal(data, &testdata); err != nil {
+		t.Fatal(err)
+	}
+
+	type response struct {
+		Books []book.Book `json:"books"`
+		Pages int         `json:"pages"`
+	}
+
+	success := response{
+		Books: testdata,
+		Pages: 11,
+	}
+
+	successBytes, err := json.Marshal(success)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	successEmptyBooks := response{
+		Pages: 11,
+	}
+
+	successEmptyBooksBytes, err := json.Marshal(successEmptyBooks)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		expectedOutput     any
+		name               string
+		query              string
+		serviceReturn      []any
+		expectedServiceArg book.GetBooksOptions
+		expectedStatusCode int
+	}{
+		{
+			name:          "Success",
+			query:         "?page=1",
+			serviceReturn: []any{success.Books, 101, nil},
+			expectedServiceArg: book.GetBooksOptions{
+				Limit:  10,
+				Offset: 0,
+			},
+			expectedOutput:     string(successBytes),
+			expectedStatusCode: http.StatusOK,
+		},
+		{
+			name:          "Success exceed pages",
+			query:         "?page=6969",
+			serviceReturn: []any{successEmptyBooks.Books, 101, nil},
+			expectedServiceArg: book.GetBooksOptions{
+				Limit:  10,
+				Offset: 6968 * 10,
+			},
+			expectedOutput:     string(successEmptyBooksBytes),
+			expectedStatusCode: http.StatusOK,
+		},
+		{
+			name:           "Invalid page",
+			query:          "?page=j",
+			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "invalid value for 'page'"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mockRepository := new(MockBookRepository)
+			mockRepository.On("GetBooks", test.expectedServiceArg).Return(test.serviceReturn...)
+			h := handler{bookService: book.NewBookService(mockRepository)}
+
+			ctx, rec := newEchoContext(t, http.MethodGet, "/books"+test.query, nil)
+			err := h.getBooks(ctx)
+
+			if err != nil {
+				expectedOutput, expectedOutputOk := test.expectedOutput.(*echo.HTTPError)
+				if !expectedOutputOk {
+					assert.Fail(t, "Unexpected err", err)
+					return
+				}
+
+				hErr, hErrOk := err.(*echo.HTTPError)
+				if hErrOk {
+					switch hErr.Code {
+					case http.StatusBadRequest:
+						return
+					}
+
+					assert.Equal(t, expectedOutput.Code, hErr.Code)
+					assert.Equal(t, expectedOutput.Error(), hErr.Error())
+				}
+			} else {
+				assert.Equal(t, test.expectedStatusCode, rec.Code)
+				assert.Equal(t, test.expectedOutput, strings.TrimSpace(rec.Body.String()))
+			}
+
+			mockRepository.AssertExpectations(t)
+		})
+	}
+}
+
 //
 // func TestGetBookById(t *testing.T) {
 // 	memoryRepository.Seed()

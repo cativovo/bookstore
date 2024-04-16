@@ -38,20 +38,25 @@ func (h *handler) healthCheck(ctx echo.Context) error {
 }
 
 type getBooksQueryParam struct {
-	// json tag is used by err.Field() of validator, the order of tags should always be query > json
 	OrderBy string `query:"order_by" json:"order_by"`
+	Page    int    `query:"page" json:"page"`
 	Desc    bool   `query:"desc" json:"desc"`
-	Page    int    `query:"page" json:"page" validate:"gte=1"`
 }
 
 func (h *handler) getBooks(ctx echo.Context) error {
 	var queryParam getBooksQueryParam
-	if err := ctx.Bind(&queryParam); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+
+	if err := echo.QueryParamsBinder(ctx).Int("page", &queryParam.Page).BindError(); err != nil {
+		bindingErr := err.(*echo.BindingError)
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("invalid value for '%s'", bindingErr.Field))
 	}
 
 	if err := ctx.Validate(&queryParam); err != nil {
 		return err
+	}
+
+	if queryParam.Page <= 0 {
+		queryParam.Page = 1
 	}
 
 	const limit = 10
