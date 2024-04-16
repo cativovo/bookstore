@@ -7,6 +7,9 @@ export DB_PORT=8989
 dev:
 	air
 
+debug:
+	dlv debug cmd/app/main.go
+
 seed:
 	go run ./cmd/seed
 
