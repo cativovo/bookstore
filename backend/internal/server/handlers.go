@@ -151,7 +151,7 @@ func (h *handler) deleteGenre(ctx echo.Context) error {
 
 type payloadCreateBook struct {
 	// https://github.com/go-playground/validator/issues/692#issuecomment-737039536
-	Price       *float64 `json:"price" validate:"required,number"`
+	Price       *float64 `json:"price" validate:"required,gt=0"`
 	Title       string   `json:"title" validate:"required"`
 	Author      string   `json:"author" validate:"required"`
 	Description string   `json:"description"`
