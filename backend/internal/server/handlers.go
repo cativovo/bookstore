@@ -40,7 +40,7 @@ func (h *handler) healthCheck(ctx echo.Context) error {
 }
 
 type getBooksQueryParam struct {
-	OrderBy string `query:"order_by" json:"order_by"`
+	OrderBy string `query:"order_by"`
 	Page    int    `query:"page" json:"page"`
 	Desc    bool   `query:"desc" json:"desc"`
 }
@@ -48,7 +48,12 @@ type getBooksQueryParam struct {
 func (h *handler) getBooks(ctx echo.Context) error {
 	var queryParam getBooksQueryParam
 
-	if err := echo.QueryParamsBinder(ctx).Int("page", &queryParam.Page).BindError(); err != nil {
+	err := echo.QueryParamsBinder(ctx).
+		Int("page", &queryParam.Page).
+		Bool("desc", &queryParam.Desc).
+		String("order_by", &queryParam.OrderBy).
+		BindError()
+	if err != nil {
 		bindingErr := err.(*echo.BindingError)
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("invalid value for '%s'", bindingErr.Field))
 	}

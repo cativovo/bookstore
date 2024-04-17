@@ -457,6 +457,16 @@ func TestGetBooks(t *testing.T) {
 			expectedStatusCode: http.StatusOK,
 		},
 		{
+			name:          "Success without query",
+			query:         "",
+			serviceReturn: []any{success.Books, 101, nil},
+			expectedServiceArg: book.GetBooksOptions{
+				Limit: 10,
+			},
+			expectedOutput:     string(successBytes),
+			expectedStatusCode: http.StatusOK,
+		},
+		{
 			name:          "Success exceed pages",
 			query:         "?page=6969",
 			serviceReturn: []any{successEmptyBooks.Books, 101, nil},
@@ -468,9 +478,36 @@ func TestGetBooks(t *testing.T) {
 			expectedStatusCode: http.StatusOK,
 		},
 		{
+			name:          "Success desc",
+			query:         "?desc=true",
+			serviceReturn: []any{successEmptyBooks.Books, 101, nil},
+			expectedServiceArg: book.GetBooksOptions{
+				Limit: 10,
+				Desc:  true,
+			},
+			expectedOutput:     string(successEmptyBooksBytes),
+			expectedStatusCode: http.StatusOK,
+		},
+		{
+			name:          "Success order_by",
+			query:         "?order_by=author",
+			serviceReturn: []any{successEmptyBooks.Books, 101, nil},
+			expectedServiceArg: book.GetBooksOptions{
+				Limit:   10,
+				OrderBy: "author",
+			},
+			expectedOutput:     string(successEmptyBooksBytes),
+			expectedStatusCode: http.StatusOK,
+		},
+		{
 			name:           "Invalid page",
 			query:          "?page=j",
 			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "invalid value for 'page'"),
+		},
+		{
+			name:           "Invalid desc",
+			query:          "?desc=j",
+			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "invalid value for 'desc'"),
 		},
 	}
 
