@@ -18,7 +18,7 @@ type handler struct {
 
 const (
 	msgInternalServerErr = "oops something went wrong"
-	msgBindErr           = "unable to parse the request"
+	msgInvalidPayload    = "unable to parse the request"
 )
 
 func (s *Server) registerHandlers() {
@@ -197,5 +197,5 @@ func getBindErr(err error) *echo.HTTPError {
 		}
 	}
 
-	return echo.NewHTTPError(defaultStatusCode, msgBindErr)
+	return echo.NewHTTPError(defaultStatusCode, msgInvalidPayload)
 }

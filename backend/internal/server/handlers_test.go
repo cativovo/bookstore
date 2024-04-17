@@ -97,12 +97,18 @@ func TestCreateGenre(t *testing.T) {
 			expectedOutput:     echo.NewHTTPError(http.StatusBadRequest, "'name' is required"),
 		},
 		{
+			name:               "Invalid json",
+			payload:            "[]",
+			expectedStatusCode: http.StatusBadRequest,
+			expectedOutput:     echo.NewHTTPError(http.StatusBadRequest, msgInvalidPayload),
+		},
+		{
 			name:               "Internal server error",
 			serviceReturn:      errors.New("internal server error"),
 			payload:            `{"name":"horror"}`,
 			expectedServiceArg: "horror",
 			expectedStatusCode: http.StatusInternalServerError,
-			expectedOutput:     echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError),
+			expectedOutput:     echo.NewHTTPError(http.StatusInternalServerError, msgInternalServerErr),
 		},
 	}
 
@@ -116,21 +122,14 @@ func TestCreateGenre(t *testing.T) {
 			err := h.createGenre(ctx)
 
 			if err != nil {
-				expectedOutput, expectedOutputOk := test.expectedOutput.(*echo.HTTPError)
-				if !expectedOutputOk {
-					assert.Fail(t, "Unexpected err", err)
+				if !assert.Equal(t, test.expectedOutput, err) {
 					return
 				}
 
-				hErr, hErrOk := err.(*echo.HTTPError)
-				if hErrOk {
-					switch hErr.Code {
-					case http.StatusBadRequest:
-						return
-					}
-
-					assert.Equal(t, expectedOutput.Code, hErr.Code)
-					assert.Equal(t, expectedOutput.Error(), hErr.Error())
+				switch test.expectedOutput.(*echo.HTTPError).Code {
+				case http.StatusBadRequest:
+					mockRepository.AssertNotCalled(t, "CreateGenre", test.expectedServiceArg)
+					return
 				}
 			} else {
 				assert.Equal(t, test.expectedStatusCode, rec.Code)
@@ -164,7 +163,6 @@ func TestDeleteGenre(t *testing.T) {
 			serviceReturn:      book.ErrNotFound,
 			genre:              "notfound",
 			expectedServiceArg: "notfound",
-			expectedStatusCode: http.StatusNotFound,
 			expectedOutput:     echo.NewHTTPError(http.StatusNotFound, "genre not found"),
 		},
 		{
@@ -172,8 +170,7 @@ func TestDeleteGenre(t *testing.T) {
 			serviceReturn:      errors.New("internal server error"),
 			genre:              "horror",
 			expectedServiceArg: "horror",
-			expectedStatusCode: http.StatusInternalServerError,
-			expectedOutput:     echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError),
+			expectedOutput:     echo.NewHTTPError(http.StatusInternalServerError, msgInternalServerErr),
 		},
 	}
 
@@ -189,16 +186,14 @@ func TestDeleteGenre(t *testing.T) {
 			err := h.deleteGenre(ctx)
 
 			if err != nil {
-				expectedOutput, expectedOutputOk := test.expectedOutput.(*echo.HTTPError)
-				if !expectedOutputOk {
-					assert.Fail(t, "Unexpected err", err)
+				if !assert.Equal(t, test.expectedOutput, err) {
 					return
 				}
 
-				hErr, hErrOk := err.(*echo.HTTPError)
-				if hErrOk {
-					assert.Equal(t, expectedOutput.Code, hErr.Code)
-					assert.Equal(t, expectedOutput.Error(), hErr.Error())
+				switch test.expectedOutput.(*echo.HTTPError).Code {
+				case http.StatusBadRequest:
+					mockRepository.AssertNotCalled(t, "DeleteGenre", test.expectedServiceArg)
+					return
 				}
 			} else {
 				assert.Equal(t, test.expectedStatusCode, rec.Code)
@@ -259,34 +254,46 @@ func TestCreateBook(t *testing.T) {
 			expectedOutput:     string(emptyGenresBookJson),
 		},
 		{
-			name:               "Empty title",
-			payload:            `{"title":"","author":"john doe","description":"this is a description","cover_image":"coverimage.com","genres":["horror"],"price":69}`,
-			serviceReturn:      []any{book.Book{}, nil},
-			expectedServiceArg: book.Book{},
-			expectedOutput:     echo.NewHTTPError(http.StatusBadRequest, "'title' is required"),
+			name:           "Empty title",
+			payload:        `{"title":"","author":"john doe","description":"this is a description","cover_image":"coverimage.com","genres":["horror"],"price":69}`,
+			serviceReturn:  []any{},
+			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "'title' is required"),
 		},
 		{
-			name:               "Empty author",
-			payload:            `{"title":"this is a title","author":"","description":"this is a description","cover_image":"coverimage.com","genres":["horror"],"price":69}`,
-			serviceReturn:      []any{book.Book{}, nil},
-			expectedServiceArg: book.Book{},
-			expectedOutput:     echo.NewHTTPError(http.StatusBadRequest, "'author' is required"),
+			name:           "Empty author",
+			payload:        `{"title":"this is a title","author":"","description":"this is a description","cover_image":"coverimage.com","genres":["horror"],"price":69}`,
+			serviceReturn:  []any{},
+			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "'author' is required"),
 		},
 		{
-			name:               "No genres",
-			payload:            `{"title":"this is a title","author":"john doe","description":"this is a description","cover_image":"coverimage.com","price":69}`,
-			serviceReturn:      []any{book.Book{}, nil},
-			expectedServiceArg: book.Book{},
-			expectedStatusCode: http.StatusBadRequest,
-			expectedOutput:     echo.NewHTTPError(http.StatusBadRequest, "'genres' is required"),
+			name:           "No genres",
+			payload:        `{"title":"this is a title","author":"john doe","description":"this is a description","cover_image":"coverimage.com","price":69}`,
+			serviceReturn:  []any{},
+			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "'genres' is required"),
 		},
 		{
-			name:               "No price",
-			payload:            `{"title":"this is a title","author":"john doe","description":"this is a description","cover_image":"coverimage.com","genres":["horror"]}`,
-			serviceReturn:      []any{book.Book{}, nil},
-			expectedServiceArg: book.Book{},
-			expectedStatusCode: http.StatusBadRequest,
-			expectedOutput:     echo.NewHTTPError(http.StatusBadRequest, "'price' is required"),
+			name:           "No price",
+			payload:        `{"title":"this is a title","author":"john doe","description":"this is a description","cover_image":"coverimage.com","genres":["horror"]}`,
+			serviceReturn:  []any{},
+			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "'price' is required"),
+		},
+		{
+			name:           "Zero price",
+			payload:        `{"title":"this is a title","author":"john doe","description":"this is a description","cover_image":"coverimage.com","genres":["horror"], "price": 0}`,
+			serviceReturn:  []any{},
+			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "'price' should be greater than 0"),
+		},
+		{
+			name:           "Invalid type",
+			payload:        `{"title":69,"author":"john doe","description":"this is a description","cover_image":"coverimage.com","genres":["horror"], "price": 69}`,
+			serviceReturn:  []any{},
+			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "'title' should be string"),
+		},
+		{
+			name:           "Invalid json",
+			payload:        "[]",
+			serviceReturn:  []any{},
+			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, msgInvalidPayload),
 		},
 		{
 			name:               "Internal server error",
@@ -294,7 +301,7 @@ func TestCreateBook(t *testing.T) {
 			serviceReturn:      []any{book.Book{}, errors.New("internal server error")},
 			expectedServiceArg: successBook,
 			expectedStatusCode: http.StatusInternalServerError,
-			expectedOutput:     echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError),
+			expectedOutput:     echo.NewHTTPError(http.StatusInternalServerError, msgInternalServerErr),
 		},
 	}
 
@@ -308,21 +315,14 @@ func TestCreateBook(t *testing.T) {
 			err := h.createBook(ctx)
 
 			if err != nil {
-				expectedOutput, expectedOutputOk := test.expectedOutput.(*echo.HTTPError)
-				if !expectedOutputOk {
-					assert.Fail(t, "Unexpected err", err)
+				if !assert.Equal(t, test.expectedOutput, err) {
 					return
 				}
 
-				hErr, hErrOk := err.(*echo.HTTPError)
-				if hErrOk {
-					switch hErr.Code {
-					case http.StatusBadRequest:
-						return
-					}
-
-					assert.Equal(t, expectedOutput.Code, hErr.Code)
-					assert.Equal(t, expectedOutput.Error(), hErr.Error())
+				switch test.expectedOutput.(*echo.HTTPError).Code {
+				case http.StatusBadRequest:
+					mockRepository.AssertNotCalled(t, "CreateBook", test.expectedServiceArg)
+					return
 				}
 			} else {
 				assert.Equal(t, test.expectedStatusCode, rec.Code)
@@ -368,7 +368,7 @@ func TestGetGenres(t *testing.T) {
 		{
 			name:           "Internal server error",
 			serviceReturn:  []any{testdata, errors.New("internal server error")},
-			expectedOutput: echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError), expectedStatusCode: http.StatusOK,
+			expectedOutput: echo.NewHTTPError(http.StatusInternalServerError, msgInternalServerErr), expectedStatusCode: http.StatusOK,
 		},
 	}
 
@@ -382,21 +382,21 @@ func TestGetGenres(t *testing.T) {
 			err := h.getGenres(ctx)
 
 			if err != nil {
-				expectedOutput, expectedOutputOk := test.expectedOutput.(*echo.HTTPError)
-				if !expectedOutputOk {
-					assert.Fail(t, "Unexpected err", err)
+				if !assert.Equal(t, test.expectedOutput, err) {
 					return
 				}
 
-				hErr, hErrOk := err.(*echo.HTTPError)
-				if hErrOk {
-					assert.Equal(t, expectedOutput.Code, hErr.Code)
-					assert.Equal(t, expectedOutput.Error(), hErr.Error())
+				switch test.expectedOutput.(*echo.HTTPError).Code {
+				case http.StatusBadRequest:
+					mockRepository.AssertNotCalled(t, "GetGenres")
+					return
 				}
 			} else {
 				assert.Equal(t, test.expectedStatusCode, rec.Code)
 				assert.Equal(t, test.expectedOutput, strings.TrimSpace(rec.Body.String()))
 			}
+
+			mockRepository.AssertExpectations(t)
 		})
 	}
 }
@@ -484,21 +484,14 @@ func TestGetBooks(t *testing.T) {
 			err := h.getBooks(ctx)
 
 			if err != nil {
-				expectedOutput, expectedOutputOk := test.expectedOutput.(*echo.HTTPError)
-				if !expectedOutputOk {
-					assert.Fail(t, "Unexpected err", err)
+				if !assert.Equal(t, test.expectedOutput, err) {
 					return
 				}
 
-				hErr, hErrOk := err.(*echo.HTTPError)
-				if hErrOk {
-					switch hErr.Code {
-					case http.StatusBadRequest:
-						return
-					}
-
-					assert.Equal(t, expectedOutput.Code, hErr.Code)
-					assert.Equal(t, expectedOutput.Error(), hErr.Error())
+				switch test.expectedOutput.(*echo.HTTPError).Code {
+				case http.StatusBadRequest:
+					mockRepository.AssertNotCalled(t, "GetBooks", test.expectedServiceArg)
+					return
 				}
 			} else {
 				assert.Equal(t, test.expectedStatusCode, rec.Code)
