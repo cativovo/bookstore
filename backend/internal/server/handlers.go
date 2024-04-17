@@ -1,10 +1,12 @@
 package server
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"net/http"
+	"reflect"
 
 	"github.com/cativovo/bookstore/internal/book"
 	"github.com/labstack/echo/v4"
@@ -15,8 +17,8 @@ type handler struct {
 }
 
 const (
-	messageInternalServerError = "oops something went wrong"
-	messageBindError           = "unable to parse the request"
+	msgInternalServerErr = "oops something went wrong"
+	msgBindErr           = "unable to parse the request"
 )
 
 func (s *Server) registerHandlers() {
@@ -71,7 +73,7 @@ func (h *handler) getBooks(ctx echo.Context) error {
 	)
 	if err != nil {
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError)
+		return echo.NewHTTPError(http.StatusInternalServerError, msgInternalServerErr)
 	}
 	pages := math.Ceil(float64(count) / limit)
 
@@ -90,7 +92,7 @@ func (h *handler) getBookById(ctx echo.Context) error {
 		}
 
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError)
+		return echo.NewHTTPError(http.StatusInternalServerError, msgInternalServerErr)
 	}
 
 	return ctx.JSON(http.StatusOK, b)
@@ -100,7 +102,7 @@ func (h *handler) getGenres(ctx echo.Context) error {
 	genres, err := h.bookService.GetGenres()
 	if err != nil {
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError)
+		return echo.NewHTTPError(http.StatusInternalServerError, msgInternalServerErr)
 	}
 
 	return ctx.JSON(http.StatusOK, genres)
@@ -113,7 +115,7 @@ type payloadCreateGenre struct {
 func (h *handler) createGenre(ctx echo.Context) error {
 	var payload payloadCreateGenre
 	if err := ctx.Bind(&payload); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid json")
+		return getBindErr(err)
 	}
 
 	if err := ctx.Validate(&payload); err != nil {
@@ -127,7 +129,7 @@ func (h *handler) createGenre(ctx echo.Context) error {
 		}
 
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError)
+		return echo.NewHTTPError(http.StatusInternalServerError, msgInternalServerErr)
 	}
 
 	return ctx.NoContent(http.StatusCreated)
@@ -141,7 +143,7 @@ func (h *handler) deleteGenre(ctx echo.Context) error {
 		}
 
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError)
+		return echo.NewHTTPError(http.StatusInternalServerError, msgInternalServerErr)
 	}
 
 	return ctx.NoContent(http.StatusNoContent)
@@ -160,7 +162,7 @@ type payloadCreateBook struct {
 func (h *handler) createBook(ctx echo.Context) error {
 	var payload payloadCreateBook
 	if err := ctx.Bind(&payload); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return getBindErr(err)
 	}
 
 	if err := ctx.Validate(&payload); err != nil {
@@ -180,8 +182,20 @@ func (h *handler) createBook(ctx echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, "invalid genre")
 		}
 		ctx.Logger().Error(err)
-		return echo.NewHTTPError(http.StatusInternalServerError, messageInternalServerError)
+		return echo.NewHTTPError(http.StatusInternalServerError, msgInternalServerErr)
 	}
 
 	return ctx.JSON(http.StatusCreated, b)
+}
+
+func getBindErr(err error) *echo.HTTPError {
+	defaultStatusCode := http.StatusBadRequest
+
+	if httpErr, ok := err.(*echo.HTTPError); ok {
+		if ute, ok := httpErr.Internal.(*json.UnmarshalTypeError); ok && ute.Type.Kind() != reflect.Struct {
+			return echo.NewHTTPError(defaultStatusCode, fmt.Sprintf("'%s' should be %s", ute.Field, ute.Type))
+		}
+	}
+
+	return echo.NewHTTPError(defaultStatusCode, msgBindErr)
 }
