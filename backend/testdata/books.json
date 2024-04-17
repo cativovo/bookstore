@@ -1,0 +1,110 @@
+[
+  {
+    "id": "55976dc9-74d3-4982-a2ec-966b9f803d97",
+    "title": "Anna Karenina",
+    "author": "Albert Camus",
+    "description": "World tensely onto whoever whomever boy as group.",
+    "cover_image": "https://placehold.co/600x400",
+    "genres": ["Satire", "Science", "Crime", "Urban", "Saga", "Political"],
+    "price": 5.67
+  },
+  {
+    "id": "850fe4d5-9d09-4623-bc6c-f2eab405508a",
+    "title": "Anna Karenina",
+    "author": "Albert Camus",
+    "description": "To comb besides ours i.e. batch luck far back. Cackle behind where of weekly his.",
+    "cover_image": "https://placehold.co/600x400",
+    "genres": [
+      "Comic",
+      "Saga",
+      "Science",
+      "Satire",
+      "Urban",
+      "Thriller",
+      "Political"
+    ],
+    "price": 11.95
+  },
+  {
+    "id": "d9b82185-cf73-4f36-92d4-a03276c9ae29",
+    "title": "Anna Karenina",
+    "author": "Astrid Lindgren",
+    "description": "Shall whose team train archipelago purse well moreover us each many these sparse why. Now already ream earlier perfectly.",
+    "cover_image": "https://placehold.co/600x400",
+    "genres": ["Science", "Comic", "Urban", "Thriller"],
+    "price": 22.62
+  },
+  {
+    "id": "4ee5f144-ad20-47ad-8bd6-66bde246b54b",
+    "title": "Anna Karenina",
+    "author": "D. H. Lawrence",
+    "description": "On lastly body abroad in that poverty heavily first.",
+    "cover_image": "https://placehold.co/600x400",
+    "genres": [],
+    "price": 41.35
+  },
+  {
+    "id": "fa3579a1-becd-46f7-a0f1-c6c34436e5dd",
+    "title": "Anna Karenina",
+    "author": "Edgar Allan Poe",
+    "description": "Due are myself which her example therefore ours over e.g. it talent remove daily him. Punctuation seldom how still choir sometimes project this jump than have brace.",
+    "cover_image": "https://placehold.co/600x400",
+    "genres": ["Urban", "Saga", "Romance", "Comic", "Science", "Thriller"],
+    "price": 13.47
+  },
+  {
+    "id": "ae7e208a-a41f-4830-adc0-9214bf9df04f",
+    "title": "Anna Karenina",
+    "author": "Edgar Allan Poe",
+    "description": "Define stand several firstly other which behind how being she. Extremely gee previously that down Swiss angrily fall few fame in these.",
+    "cover_image": "https://placehold.co/600x400",
+    "genres": ["Crime", "Thriller", "Urban", "Political", "Comic"],
+    "price": 9.62
+  },
+  {
+    "id": "22157c08-7337-4fe4-a628-1e8060d934c3",
+    "title": "Anna Karenina",
+    "author": "Emily Brontë",
+    "description": "Soon since were wisp class that she part early. Board how flick there this of another how nest. Themselves those your along never yearly an several whichever all Chinese.",
+    "cover_image": "https://placehold.co/600x400",
+    "genres": [],
+    "price": 25.51
+  },
+  {
+    "id": "81af514d-c0ae-4270-8e8e-273b006a67ed",
+    "title": "Anna Karenina",
+    "author": "George Orwell",
+    "description": "Are these all behind tribe my divorce himself airport lazily late later another tonight. Once goodness that someone irritably that till later.",
+    "cover_image": "https://placehold.co/600x400",
+    "genres": [
+      "Thriller",
+      "Urban",
+      "Science",
+      "Comic",
+      "Romance",
+      "Fantasy",
+      "Crime",
+      "Saga",
+      "Satire"
+    ],
+    "price": 59.64
+  },
+  {
+    "id": "b3869c1e-a1d5-4897-9437-f5cf143cd621",
+    "title": "Anna Karenina",
+    "author": "Hans Christian Andersen",
+    "description": "Did many pod to he mistake crew archipelago archipelago. Next an myself where pack.",
+    "cover_image": "https://placehold.co/600x400",
+    "genres": ["Saga"],
+    "price": 66.16
+  },
+  {
+    "id": "03cb0254-ef83-430e-996d-da956642ecce",
+    "title": "Anna Karenina",
+    "author": "Hans Christian Andersen",
+    "description": "Mine cash of calm above music heart whose Peruvian dance for how sew above.",
+    "cover_image": "https://placehold.co/600x400",
+    "genres": ["Crime", "Fantasy", "Thriller"],
+    "price": 38.79
+  }
+]
