@@ -53,6 +53,12 @@ SELECT (
         book_genre ON book_genre.book_id = book.id
       LEFT JOIN
         genre ON genre.id = book_genre.genre_id
+      WHERE 
+        CASE
+          WHEN @filter_by::text = 'author' THEN book.author
+          ELSE book.title
+        END
+      ILIKE @keyword
       GROUP BY
         book.id
       ORDER BY 

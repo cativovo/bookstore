@@ -8,9 +8,8 @@ var (
 )
 
 type GetBooksFilter struct {
-	Author      string
-	Description string
-	Genres      []string
+	By      string
+	Keyword string
 }
 
 type GetBooksOptions struct {

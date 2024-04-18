@@ -80,6 +80,10 @@ func (h *handler) getBooks(ctx echo.Context) error {
 			Offset:  (queryParam.Page - 1) * limit,
 			OrderBy: queryParam.OrderBy,
 			Desc:    queryParam.Desc,
+			Filter: book.GetBooksFilter{
+				By:      queryParam.FilterBy,
+				Keyword: queryParam.Keyword,
+			},
 		},
 	)
 	if err != nil {

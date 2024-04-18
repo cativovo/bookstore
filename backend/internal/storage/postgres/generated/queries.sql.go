@@ -159,27 +159,33 @@ SELECT (
         book_genre ON book_genre.book_id = book.id
       LEFT JOIN
         genre ON genre.id = book_genre.genre_id
+      WHERE 
+        CASE
+          WHEN $3::text = 'author' THEN book.author
+          ELSE book.title
+        END
+      ILIKE $4
       GROUP BY
         book.id
       ORDER BY 
         -- will produce title ASC/DESC, author ASC/DESC OR author ASC/DESC, title ASC/DESC
         CASE
-          WHEN $3::boolean AND $4::text = 'title' THEN title
-          WHEN $3::boolean AND $4::text = 'author' THEN author
-          WHEN $3::boolean THEN title
+          WHEN $5::boolean AND $6::text = 'title' THEN title
+          WHEN $5::boolean AND $6::text = 'author' THEN author
+          WHEN $5::boolean THEN title
         END DESC,
         CASE
-          WHEN $3::boolean AND $4::text = 'author' THEN title
-          WHEN $3::boolean THEN author
+          WHEN $5::boolean AND $6::text = 'author' THEN title
+          WHEN $5::boolean THEN author
         END DESC,
         CASE
-          WHEN NOT $3::boolean AND $4::text = 'title' THEN title
-          WHEN NOT $3::boolean AND $4::text = 'author' THEN author
-          WHEN NOT $3::boolean THEN title
+          WHEN NOT $5::boolean AND $6::text = 'title' THEN title
+          WHEN NOT $5::boolean AND $6::text = 'author' THEN author
+          WHEN NOT $5::boolean THEN title
         END ASC,
         CASE
-          WHEN NOT $3::boolean AND $4::text = 'author' THEN title
-          WHEN NOT $3::boolean THEN author
+          WHEN NOT $5::boolean AND $6::text = 'author' THEN title
+          WHEN NOT $5::boolean THEN author
         END ASC
       LIMIT 
         $1
@@ -192,6 +198,8 @@ SELECT (
 type GetBooksParams struct {
 	Limit      int32
 	Offset     int32
+	FilterBy   string
+	Keyword    string
 	Descending bool
 	OrderBy    string
 }
@@ -205,6 +213,8 @@ func (q *Queries) GetBooks(ctx context.Context, arg GetBooksParams) (GetBooksRow
 	row := q.db.QueryRow(ctx, getBooks,
 		arg.Limit,
 		arg.Offset,
+		arg.FilterBy,
+		arg.Keyword,
 		arg.Descending,
 		arg.OrderBy,
 	)

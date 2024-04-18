@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/cativovo/bookstore/internal/book"
@@ -153,6 +154,8 @@ func (pr *PostgresRepository) GetBooks(opts book.GetBooksOptions) ([]book.Book, 
 		Offset:     int32(opts.Offset),
 		OrderBy:    opts.OrderBy,
 		Descending: opts.Desc,
+		FilterBy:   opts.Filter.By,
+		Keyword:    fmt.Sprintf("%%%s%%", opts.Filter.Keyword),
 	})
 	if err != nil {
 		return nil, 0, err
