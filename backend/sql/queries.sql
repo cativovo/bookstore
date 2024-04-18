@@ -30,9 +30,20 @@ INSERT INTO book_genre (
 -- name: GetBooks :one
 SELECT (
   SELECT
-    COUNT(id)
+    COUNT(DISTINCT book.id)
   FROM
     book
+  LEFT JOIN
+    book_genre ON book_genre.book_id = book.id
+  LEFT JOIN
+    genre ON genre.id = book_genre.genre_id
+  WHERE 
+    CASE
+      WHEN @filter_by::text = 'author' THEN book.author
+      WHEN @filter_by::text = 'genre' THEN genre.name
+      ELSE book.title
+    END
+  ILIKE @keyword
 ) AS count,
 (
   SELECT 
@@ -56,6 +67,7 @@ SELECT (
       WHERE 
         CASE
           WHEN @filter_by::text = 'author' THEN book.author
+          WHEN @filter_by::text = 'genre' THEN genre.name
           ELSE book.title
         END
       ILIKE @keyword
