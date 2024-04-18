@@ -30,8 +30,8 @@ type Validator struct {
 	validator *validator.Validate
 }
 
-func (v *Validator) Validate(p any) error {
-	if err := v.validator.Struct(p); err != nil {
+func (v *Validator) Validate(s any) error {
+	if err := v.validator.Struct(s); err != nil {
 		var vErrs validationErrors
 
 		for _, err := range err.(validator.ValidationErrors) {
@@ -39,6 +39,12 @@ func (v *Validator) Validate(p any) error {
 			switch err.Tag() {
 			case "required":
 				e = fmt.Errorf("'%s' is required", err.Field())
+			case "required_with":
+				if field, ok := reflect.TypeOf(s).Elem().FieldByName(err.Param()); ok {
+					if jsonTag, ok := field.Tag.Lookup("json"); ok {
+						e = fmt.Errorf("'%s' is required with '%s'", err.Field(), jsonTag)
+					}
+				}
 			case "number":
 				e = fmt.Errorf("'%s' should have numeric value", err.Field())
 			case "gte":

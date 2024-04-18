@@ -107,7 +107,6 @@ func TestCreateGenre(t *testing.T) {
 			serviceReturn:      errors.New("internal server error"),
 			payload:            `{"name":"horror"}`,
 			expectedServiceArg: "horror",
-			expectedStatusCode: http.StatusInternalServerError,
 			expectedOutput:     echo.NewHTTPError(http.StatusInternalServerError, msgInternalServerErr),
 		},
 	}
@@ -300,7 +299,6 @@ func TestCreateBook(t *testing.T) {
 			payload:            `{"title":"this is a title","author":"john doe","description":"this is a description","cover_image":"coverimage.com","genres":["horror"],"price":69}`,
 			serviceReturn:      []any{book.Book{}, errors.New("internal server error")},
 			expectedServiceArg: successBook,
-			expectedStatusCode: http.StatusInternalServerError,
 			expectedOutput:     echo.NewHTTPError(http.StatusInternalServerError, msgInternalServerErr),
 		},
 	}
@@ -446,22 +444,21 @@ func TestGetBooks(t *testing.T) {
 		expectedStatusCode int
 	}{
 		{
-			name:          "Success",
-			query:         "?page=1",
+			name:          "Success without query",
 			serviceReturn: []any{success.Books, 101, nil},
 			expectedServiceArg: book.GetBooksOptions{
-				Limit:  10,
-				Offset: 0,
+				Limit: 10,
 			},
 			expectedOutput:     string(successBytes),
 			expectedStatusCode: http.StatusOK,
 		},
 		{
-			name:          "Success without query",
-			query:         "",
+			name:          "Success page",
+			query:         "?page=1",
 			serviceReturn: []any{success.Books, 101, nil},
 			expectedServiceArg: book.GetBooksOptions{
-				Limit: 10,
+				Limit:  10,
+				Offset: 0,
 			},
 			expectedOutput:     string(successBytes),
 			expectedStatusCode: http.StatusOK,
@@ -500,6 +497,20 @@ func TestGetBooks(t *testing.T) {
 			expectedStatusCode: http.StatusOK,
 		},
 		{
+			name:          "Success filter",
+			query:         "?filter_by=title&keyword=yot",
+			serviceReturn: []any{successEmptyBooks.Books, 101, nil},
+			expectedServiceArg: book.GetBooksOptions{
+				Limit: 10,
+				Filter: book.GetBooksFilter{
+					By:      "title",
+					Keyword: "yot",
+				},
+			},
+			expectedOutput:     string(successEmptyBooksBytes),
+			expectedStatusCode: http.StatusOK,
+		},
+		{
 			name:           "Invalid page",
 			query:          "?page=j",
 			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "invalid value for 'page'"),
@@ -508,6 +519,24 @@ func TestGetBooks(t *testing.T) {
 			name:           "Invalid desc",
 			query:          "?desc=j",
 			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "invalid value for 'desc'"),
+		},
+		{
+			name:           "filter_by without keyword",
+			query:          "?filter_by=title",
+			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "'keyword' is required with 'filter_by'"),
+		},
+		{
+			name:           "keyword without filter_by",
+			query:          "?keyword=yot",
+			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "'filter_by' is required with 'keyword'"),
+		},
+		{
+			name:          "Internal server error",
+			serviceReturn: []any{success.Books, 101, errors.New("internal server error")},
+			expectedServiceArg: book.GetBooksOptions{
+				Limit: 10,
+			},
+			expectedOutput: echo.NewHTTPError(http.StatusInternalServerError, msgInternalServerErr),
 		},
 	}
 

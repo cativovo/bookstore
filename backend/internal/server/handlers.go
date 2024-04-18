@@ -41,8 +41,12 @@ func (h *handler) healthCheck(ctx echo.Context) error {
 
 type getBooksQueryParam struct {
 	OrderBy string `query:"order_by"`
-	Page    int    `query:"page" json:"page"`
-	Desc    bool   `query:"desc" json:"desc"`
+	// add json tag to make validator use that name
+	// the order should be: query -> json tag
+	FilterBy string `query:"filter_by" json:"filter_by" validate:"required_with=Keyword"`
+	Keyword  string `query:"keyword" json:"keyword" validate:"required_with=FilterBy"`
+	Page     int    `query:"page"`
+	Desc     bool   `query:"desc"`
 }
 
 func (h *handler) getBooks(ctx echo.Context) error {
@@ -52,6 +56,8 @@ func (h *handler) getBooks(ctx echo.Context) error {
 		Int("page", &queryParam.Page).
 		Bool("desc", &queryParam.Desc).
 		String("order_by", &queryParam.OrderBy).
+		String("filter_by", &queryParam.FilterBy).
+		String("keyword", &queryParam.Keyword).
 		BindError()
 	if err != nil {
 		bindingErr := err.(*echo.BindingError)
