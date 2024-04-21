@@ -144,12 +144,9 @@ SELECT (
   LEFT JOIN
     genre ON genre.id = book_genre.genre_id
   WHERE 
-    CASE
-      WHEN $3::text = 'author' THEN book.author
-      WHEN $3::text = 'genre' THEN genre.name
-      ELSE book.title
-    END
-  ILIKE $4
+    book.author ILIKE $3
+  AND
+    book.title ILIKE $4
 ) AS count,
 (
   SELECT 
@@ -171,12 +168,9 @@ SELECT (
       LEFT JOIN
         genre ON genre.id = book_genre.genre_id
       WHERE 
-        CASE
-          WHEN $3::text = 'author' THEN book.author
-          WHEN $3::text = 'genre' THEN genre.name
-          ELSE book.title
-        END
-      ILIKE $4
+        book.author ILIKE $3
+      AND
+        book.title ILIKE $4
       GROUP BY
         book.id
       ORDER BY 
@@ -208,12 +202,12 @@ SELECT (
 `
 
 type GetBooksParams struct {
-	Limit      int32
-	Offset     int32
-	FilterBy   string
-	Keyword    string
-	Descending bool
-	OrderBy    string
+	Limit         int32
+	Offset        int32
+	KeywordAuthor string
+	KeywordTitle  string
+	Descending    bool
+	OrderBy       string
 }
 
 type GetBooksRow struct {
@@ -225,8 +219,8 @@ func (q *Queries) GetBooks(ctx context.Context, arg GetBooksParams) (GetBooksRow
 	row := q.db.QueryRow(ctx, getBooks,
 		arg.Limit,
 		arg.Offset,
-		arg.FilterBy,
-		arg.Keyword,
+		arg.KeywordAuthor,
+		arg.KeywordTitle,
 		arg.Descending,
 		arg.OrderBy,
 	)

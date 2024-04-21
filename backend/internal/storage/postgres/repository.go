@@ -150,12 +150,13 @@ func (pr *PostgresRepository) CreateBook(b book.Book) (book.Book, error) {
 
 func (pr *PostgresRepository) GetBooks(opts book.GetBooksOptions) ([]book.Book, int, error) {
 	row, err := pr.queries.GetBooks(pr.ctx, query.GetBooksParams{
-		Limit:      int32(opts.Limit),
-		Offset:     int32(opts.Offset),
-		OrderBy:    opts.OrderBy,
-		Descending: opts.Desc,
-		FilterBy:   opts.Filter.By,
-		Keyword:    fmt.Sprintf("%%%s%%", opts.Filter.Keyword),
+		Limit:         int32(opts.Limit),
+		Offset:        int32(opts.Offset),
+		Descending:    opts.Desc,
+		OrderBy:       opts.OrderBy,
+		KeywordAuthor: appendPatternWildcard(opts.Filter.Author),
+		KeywordTitle:  appendPatternWildcard(opts.Filter.Title),
+		// Genres:        opts.Filter.Genres,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -224,4 +225,8 @@ func (pr *PostgresRepository) GetBookById(id string) (book.Book, error) {
 		Description: b.Description.String,
 		Genres:      genres,
 	}, nil
+}
+
+func appendPatternWildcard(s string) string {
+	return fmt.Sprintf("%%%s%%", s)
 }

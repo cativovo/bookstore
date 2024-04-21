@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"reflect"
+	"strings"
 
 	"github.com/cativovo/bookstore/internal/book"
 	"github.com/labstack/echo/v4"
@@ -41,12 +42,11 @@ func (h *handler) healthCheck(ctx echo.Context) error {
 
 type getBooksQueryParam struct {
 	OrderBy string `query:"order_by"`
-	// add json tag to make validator use that name
-	// the order should be: query -> json tag
-	FilterBy string `query:"filter_by" json:"filter_by" validate:"required_with=Keyword"`
-	Keyword  string `query:"keyword" json:"keyword" validate:"required_with=FilterBy"`
-	Page     int    `query:"page"`
-	Desc     bool   `query:"desc"`
+	Author  string `query:"author"`
+	Genres  string `query:"genres"`
+	Title   string `query:"title"`
+	Page    int    `query:"page"`
+	Desc    bool   `query:"desc"`
 }
 
 func (h *handler) getBooks(ctx echo.Context) error {
@@ -56,16 +56,13 @@ func (h *handler) getBooks(ctx echo.Context) error {
 		Int("page", &queryParam.Page).
 		Bool("desc", &queryParam.Desc).
 		String("order_by", &queryParam.OrderBy).
-		String("filter_by", &queryParam.FilterBy).
-		String("keyword", &queryParam.Keyword).
+		String("author", &queryParam.Author).
+		String("genres", &queryParam.Genres).
+		String("title", &queryParam.Title).
 		BindError()
 	if err != nil {
 		bindingErr := err.(*echo.BindingError)
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("invalid value for '%s'", bindingErr.Field))
-	}
-
-	if err := ctx.Validate(&queryParam); err != nil {
-		return err
 	}
 
 	if queryParam.Page <= 0 {
@@ -74,6 +71,11 @@ func (h *handler) getBooks(ctx echo.Context) error {
 
 	const limit = 10
 
+	genres := strings.Split(queryParam.Genres, ",")
+	for i, genre := range genres {
+		genres[i] = strings.TrimSpace(genre)
+	}
+
 	books, count, err := h.bookService.GetBooks(
 		book.GetBooksOptions{
 			Limit:   limit,
@@ -81,8 +83,9 @@ func (h *handler) getBooks(ctx echo.Context) error {
 			OrderBy: queryParam.OrderBy,
 			Desc:    queryParam.Desc,
 			Filter: book.GetBooksFilter{
-				By:      queryParam.FilterBy,
-				Keyword: queryParam.Keyword,
+				Author: queryParam.Author,
+				Title:  queryParam.Title,
+				Genres: genres,
 			},
 		},
 	)

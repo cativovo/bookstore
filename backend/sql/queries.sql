@@ -38,12 +38,9 @@ SELECT (
   LEFT JOIN
     genre ON genre.id = book_genre.genre_id
   WHERE 
-    CASE
-      WHEN @filter_by::text = 'author' THEN book.author
-      WHEN @filter_by::text = 'genre' THEN genre.name
-      ELSE book.title
-    END
-  ILIKE @keyword
+    book.author ILIKE @keyword_author
+  AND
+    book.title ILIKE @keyword_title
 ) AS count,
 (
   SELECT 
@@ -65,12 +62,9 @@ SELECT (
       LEFT JOIN
         genre ON genre.id = book_genre.genre_id
       WHERE 
-        CASE
-          WHEN @filter_by::text = 'author' THEN book.author
-          WHEN @filter_by::text = 'genre' THEN genre.name
-          ELSE book.title
-        END
-      ILIKE @keyword
+        book.author ILIKE @keyword_author
+      AND
+        book.title ILIKE @keyword_title
       GROUP BY
         book.id
       ORDER BY 
