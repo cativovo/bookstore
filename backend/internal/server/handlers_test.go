@@ -503,13 +503,26 @@ func TestGetBooks(t *testing.T) {
 			expectedStatusCode: http.StatusOK,
 		},
 		{
-			name:          "Success filter",
-			query:         "?title=title",
+			name:          "Success filter by title",
+			query:         "?title=Moby%20Dick",
 			serviceReturn: []any{successEmptyBooks.Books, 101, nil},
 			expectedServiceArg: book.GetBooksOptions{
 				Limit: 10,
 				Filter: book.GetBooksFilter{
-					Title: "title",
+					Title: "Moby Dick",
+				},
+			},
+			expectedOutput:     string(successEmptyBooksBytes),
+			expectedStatusCode: http.StatusOK,
+		},
+		{
+			name:          "Success filter by author",
+			query:         "?author=doe",
+			serviceReturn: []any{successEmptyBooks.Books, 101, nil},
+			expectedServiceArg: book.GetBooksOptions{
+				Limit: 10,
+				Filter: book.GetBooksFilter{
+					Author: "doe",
 				},
 			},
 			expectedOutput:     string(successEmptyBooksBytes),
