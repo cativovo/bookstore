@@ -86,7 +86,7 @@ func (h *handler) getBooks(ctx echo.Context) error {
 			Filter: book.GetBooksFilter{
 				Author: queryParam.Author,
 				Title:  queryParam.Title,
-				Genres: genres,
+				// Genres: genres,
 			},
 		},
 	)

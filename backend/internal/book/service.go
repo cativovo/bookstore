@@ -13,7 +13,7 @@ var (
 type GetBooksFilter struct {
 	Author string
 	Title  string
-	Genres []string
+	// Genres []string
 }
 
 type GetBooksOptions struct {

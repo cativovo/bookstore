@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -21,32 +22,32 @@ type MockBookRepository struct {
 	mock.Mock
 }
 
-func (m *MockBookRepository) GetBooks(options book.GetBooksOptions) (books []book.Book, count int, err error) {
-	args := m.Called(options)
+func (m *MockBookRepository) GetBooks(ctx context.Context, options book.GetBooksOptions) (books []book.Book, count int, err error) {
+	args := m.Called(ctx, options)
 	return args.Get(0).([]book.Book), args.Int(1), args.Error(2)
 }
 
-func (m *MockBookRepository) GetBookById(id string) (book.Book, error) {
+func (m *MockBookRepository) GetBookById(ctx context.Context, id string) (book.Book, error) {
 	return book.Book{}, nil
 }
 
-func (m *MockBookRepository) GetGenres() ([]string, error) {
-	args := m.Called()
+func (m *MockBookRepository) GetGenres(ctx context.Context) ([]string, error) {
+	args := m.Called(ctx)
 	return args.Get(0).([]string), args.Error(1)
 }
 
-func (m *MockBookRepository) CreateGenre(name string) error {
-	args := m.Called(name)
+func (m *MockBookRepository) CreateGenre(ctx context.Context, name string) error {
+	args := m.Called(ctx, name)
 	return args.Error(0)
 }
 
-func (m *MockBookRepository) DeleteGenre(name string) error {
-	args := m.Called(name)
+func (m *MockBookRepository) DeleteGenre(ctx context.Context, name string) error {
+	args := m.Called(ctx, name)
 	return args.Error(0)
 }
 
-func (m *MockBookRepository) CreateBook(b book.Book) (book.Book, error) {
-	args := m.Called(b)
+func (m *MockBookRepository) CreateBook(ctx context.Context, b book.Book) (book.Book, error) {
+	args := m.Called(ctx, b)
 	return args.Get(0).(book.Book), args.Error(1)
 }
 
@@ -113,11 +114,12 @@ func TestCreateGenre(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx, rec := newEchoContext(t, http.MethodPost, "/genre", strings.NewReader(test.payload))
+
 			mockRepository := new(MockBookRepository)
-			mockRepository.On("CreateGenre", test.expectedServiceArg).Return(test.serviceReturn)
+			mockRepository.On("CreateGenre", ctx.Request().Context(), test.expectedServiceArg).Return(test.serviceReturn)
 			h := handler{bookService: book.NewBookService(mockRepository)}
 
-			ctx, rec := newEchoContext(t, http.MethodPost, "/genre", strings.NewReader(test.payload))
 			err := h.createGenre(ctx)
 
 			if err != nil {
@@ -175,11 +177,12 @@ func TestDeleteGenre(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx, rec := newEchoContext(t, http.MethodDelete, "/genre/:name", nil)
+
 			mockRepository := new(MockBookRepository)
-			mockRepository.On("DeleteGenre", test.expectedServiceArg).Return(test.serviceReturn)
+			mockRepository.On("DeleteGenre", ctx.Request().Context(), test.expectedServiceArg).Return(test.serviceReturn)
 			h := handler{bookService: book.NewBookService(mockRepository)}
 
-			ctx, rec := newEchoContext(t, http.MethodDelete, "/genre/:name", nil)
 			ctx.SetParamNames("name")
 			ctx.SetParamValues(test.genre)
 			err := h.deleteGenre(ctx)
@@ -305,11 +308,13 @@ func TestCreateBook(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			mockRepository := new(MockBookRepository)
-			test.expectedServiceArg.Id = ""
-			mockRepository.On("CreateBook", test.expectedServiceArg).Return(test.serviceReturn...)
-			h := handler{bookService: book.NewBookService(mockRepository)}
 			ctx, rec := newEchoContext(t, http.MethodPost, "/book", strings.NewReader(test.payload))
+
+			test.expectedServiceArg.Id = ""
+			mockRepository := new(MockBookRepository)
+			mockRepository.On("CreateBook", ctx.Request().Context(), test.expectedServiceArg).Return(test.serviceReturn...)
+			h := handler{bookService: book.NewBookService(mockRepository)}
+
 			err := h.createBook(ctx)
 
 			if err != nil {
@@ -372,11 +377,12 @@ func TestGetGenres(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx, rec := newEchoContext(t, http.MethodGet, "/genres", nil)
+
 			mockRepository := new(MockBookRepository)
-			mockRepository.On("GetGenres").Return(test.serviceReturn...)
+			mockRepository.On("GetGenres", ctx.Request().Context()).Return(test.serviceReturn...)
 			h := handler{bookService: book.NewBookService(mockRepository)}
 
-			ctx, rec := newEchoContext(t, http.MethodGet, "/genres", nil)
 			err := h.getGenres(ctx)
 
 			if err != nil {
@@ -498,13 +504,12 @@ func TestGetBooks(t *testing.T) {
 		},
 		{
 			name:          "Success filter",
-			query:         "?filter_by=title&keyword=yot",
+			query:         "?title=title",
 			serviceReturn: []any{successEmptyBooks.Books, 101, nil},
 			expectedServiceArg: book.GetBooksOptions{
 				Limit: 10,
 				Filter: book.GetBooksFilter{
-					By:      "title",
-					Keyword: "yot",
+					Title: "title",
 				},
 			},
 			expectedOutput:     string(successEmptyBooksBytes),
@@ -521,16 +526,6 @@ func TestGetBooks(t *testing.T) {
 			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "invalid value for 'desc'"),
 		},
 		{
-			name:           "filter_by without keyword",
-			query:          "?filter_by=title",
-			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "'keyword' is required with 'filter_by'"),
-		},
-		{
-			name:           "keyword without filter_by",
-			query:          "?keyword=yot",
-			expectedOutput: echo.NewHTTPError(http.StatusBadRequest, "'filter_by' is required with 'keyword'"),
-		},
-		{
 			name:          "Internal server error",
 			serviceReturn: []any{success.Books, 101, errors.New("internal server error")},
 			expectedServiceArg: book.GetBooksOptions{
@@ -542,11 +537,12 @@ func TestGetBooks(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx, rec := newEchoContext(t, http.MethodGet, "/books"+test.query, nil)
+
 			mockRepository := new(MockBookRepository)
-			mockRepository.On("GetBooks", test.expectedServiceArg).Return(test.serviceReturn...)
+			mockRepository.On("GetBooks", ctx.Request().Context(), test.expectedServiceArg).Return(test.serviceReturn...)
 			h := handler{bookService: book.NewBookService(mockRepository)}
 
-			ctx, rec := newEchoContext(t, http.MethodGet, "/books"+test.query, nil)
 			err := h.getBooks(ctx)
 
 			if err != nil {
