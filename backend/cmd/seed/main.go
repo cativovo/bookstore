@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math/rand/v2"
@@ -35,11 +36,12 @@ func main() {
 
 	log.Println("seeding genres...")
 	genres := getGenres()
+	ctx := context.Background()
 	for _, genre := range genres {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := repository.CreateGenre(genre); err != nil {
+			if err := repository.CreateGenre(ctx, genre); err != nil {
 				log.Printf("%s %s", genre, err)
 			}
 		}()
@@ -72,7 +74,7 @@ func main() {
 				Price:       gofakeit.Price(0.99, 69.99),
 				Genres:      bookGenres,
 			}
-			repository.CreateBook(b)
+			repository.CreateBook(ctx, b)
 		}()
 	}
 

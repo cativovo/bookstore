@@ -77,6 +77,7 @@ func (h *handler) getBooks(ctx echo.Context) error {
 	}
 
 	books, count, err := h.bookService.GetBooks(
+		ctx.Request().Context(),
 		book.GetBooksOptions{
 			Limit:   limit,
 			Offset:  (queryParam.Page - 1) * limit,
@@ -103,7 +104,7 @@ func (h *handler) getBooks(ctx echo.Context) error {
 
 func (h *handler) getBookById(ctx echo.Context) error {
 	id := ctx.Param("id")
-	b, err := h.bookService.GetBookById(id)
+	b, err := h.bookService.GetBookById(ctx.Request().Context(), id)
 	if err != nil {
 		if errors.Is(err, book.ErrNotFound) {
 			return echo.NewHTTPError(http.StatusNotFound, "book not found")
@@ -117,7 +118,7 @@ func (h *handler) getBookById(ctx echo.Context) error {
 }
 
 func (h *handler) getGenres(ctx echo.Context) error {
-	genres, err := h.bookService.GetGenres()
+	genres, err := h.bookService.GetGenres(ctx.Request().Context())
 	if err != nil {
 		ctx.Logger().Error(err)
 		return echo.NewHTTPError(http.StatusInternalServerError, msgInternalServerErr)
@@ -140,7 +141,7 @@ func (h *handler) createGenre(ctx echo.Context) error {
 		return err
 	}
 
-	err := h.bookService.CreateGenre(payload.Name)
+	err := h.bookService.CreateGenre(ctx.Request().Context(), payload.Name)
 	if err != nil {
 		if errors.Is(err, book.ErrAlreadyExists) {
 			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("genre '%s' already exists", payload.Name))
@@ -155,7 +156,7 @@ func (h *handler) createGenre(ctx echo.Context) error {
 
 func (h *handler) deleteGenre(ctx echo.Context) error {
 	name := ctx.Param("name")
-	if err := h.bookService.DeleteGenre(name); err != nil {
+	if err := h.bookService.DeleteGenre(ctx.Request().Context(), name); err != nil {
 		if errors.Is(err, book.ErrNotFound) {
 			return echo.NewHTTPError(http.StatusNotFound, "genre not found")
 		}
@@ -187,7 +188,7 @@ func (h *handler) createBook(ctx echo.Context) error {
 		return err
 	}
 
-	b, err := h.bookService.CreateBook(book.Book{
+	b, err := h.bookService.CreateBook(ctx.Request().Context(), book.Book{
 		Title:       payload.Title,
 		Author:      payload.Author,
 		Description: payload.Description,

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/cativovo/bookstore/internal/book"
 	query "github.com/cativovo/bookstore/internal/storage/postgres/generated"
@@ -19,12 +20,10 @@ import (
 type PostgresRepository struct {
 	pool    *pgxpool.Pool
 	queries *query.Queries
-	ctx     context.Context
 }
 
 func NewPostgresRepository(connStr string) (*PostgresRepository, error) {
-	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, connStr)
+	pool, err := pgxpool.New(context.Background(), connStr)
 	if err != nil {
 		return nil, err
 	}
@@ -32,17 +31,18 @@ func NewPostgresRepository(connStr string) (*PostgresRepository, error) {
 	return &PostgresRepository{
 		pool:    pool,
 		queries: query.New(pool),
-		ctx:     ctx,
 	}, nil
 }
 
-func (pr *PostgresRepository) CreateGenre(name string) error {
+func (pr *PostgresRepository) CreateGenre(ctx context.Context, name string) error {
 	var genreName pgtype.Text
 	if err := genreName.Scan(name); err != nil {
 		return err
 	}
 
-	_, err := pr.queries.CreateGenre(pr.ctx, genreName)
+	_, err := withTimeout(ctx, func(ctxWithTimeout context.Context) (pgtype.UUID, error) {
+		return pr.queries.CreateGenre(ctxWithTimeout, genreName)
+	})
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -58,13 +58,15 @@ func (pr *PostgresRepository) CreateGenre(name string) error {
 	return nil
 }
 
-func (pr *PostgresRepository) DeleteGenre(id string) error {
+func (pr *PostgresRepository) DeleteGenre(ctx context.Context, id string) error {
 	var uuid pgtype.UUID
 	if err := uuid.Scan(id); err != nil {
 		return book.ErrNotFound
 	}
 
-	rows, err := pr.queries.DeleteGenre(pr.ctx, uuid)
+	rows, err := withTimeout(ctx, func(ctxWithTimeout context.Context) (int64, error) {
+		return pr.queries.DeleteGenre(ctxWithTimeout, uuid)
+	})
 	if err != nil {
 		return err
 	}
@@ -76,87 +78,91 @@ func (pr *PostgresRepository) DeleteGenre(id string) error {
 	return nil
 }
 
-func (pr *PostgresRepository) CreateBook(b book.Book) (book.Book, error) {
-	tx, err := pr.pool.Begin(pr.ctx)
-	if err != nil {
-		return book.Book{}, err
-	}
-	defer tx.Rollback(pr.ctx)
-	qtx := pr.queries.WithTx(tx)
-
-	genreUuids := make([]pgtype.UUID, 0)
-
-	// check if genre exists in db
-	for _, v := range b.Genres {
-		name := pgtype.Text{String: v, Valid: true}
-		genre, err := qtx.GetGenreByName(pr.ctx, name)
+func (pr *PostgresRepository) CreateBook(ctx context.Context, b book.Book) (book.Book, error) {
+	return withTimeout(ctx, func(ctxWithTimeout context.Context) (book.Book, error) {
+		tx, err := pr.pool.Begin(ctxWithTimeout)
 		if err != nil {
-			switch err {
-			case pgx.ErrNoRows:
-				return book.Book{}, book.ErrNotFound
-			default:
+			return book.Book{}, err
+		}
+		defer tx.Rollback(ctxWithTimeout)
+		qtx := pr.queries.WithTx(tx)
+
+		genreUuids := make([]pgtype.UUID, 0)
+
+		// check if genre exists in db
+		for _, v := range b.Genres {
+			name := pgtype.Text{String: v, Valid: true}
+			genre, err := qtx.GetGenreByName(ctxWithTimeout, name)
+			if err != nil {
+				switch err {
+				case pgx.ErrNoRows:
+					return book.Book{}, book.ErrNotFound
+				default:
+					return book.Book{}, err
+				}
+			}
+
+			genreUuids = append(genreUuids, genre.ID)
+		}
+
+		// create book
+		description := pgtype.Text{String: b.Description, Valid: true}
+		coverImage := pgtype.Text{String: b.CoverImage, Valid: true}
+
+		var price pgtype.Numeric
+		if err := price.Scan(strconv.FormatFloat(b.Price, 'f', 2, 64)); err != nil {
+			return book.Book{}, err
+		}
+
+		createBookParams := query.CreateBookParams{
+			Title:       b.Title,
+			Author:      b.Author,
+			Description: description,
+			Price:       price,
+			CoverImage:  coverImage,
+		}
+		bookUuid, err := qtx.CreateBook(ctxWithTimeout, createBookParams)
+		if err != nil {
+			return book.Book{}, err
+		}
+
+		// create bookgenre
+		for _, genreUuid := range genreUuids {
+			err := qtx.CreateBookGenre(ctxWithTimeout, query.CreateBookGenreParams{
+				BookID:  bookUuid,
+				GenreID: genreUuid,
+			})
+			if err != nil {
 				return book.Book{}, err
 			}
 		}
 
-		genreUuids = append(genreUuids, genre.ID)
-	}
+		if err := tx.Commit(ctxWithTimeout); err != nil {
+			return book.Book{}, err
+		}
 
-	// create book
-	description := pgtype.Text{String: b.Description, Valid: true}
-	coverImage := pgtype.Text{String: b.CoverImage, Valid: true}
-
-	var price pgtype.Numeric
-	if err := price.Scan(strconv.FormatFloat(b.Price, 'f', 2, 64)); err != nil {
-		return book.Book{}, err
-	}
-
-	createBookParams := query.CreateBookParams{
-		Title:       b.Title,
-		Author:      b.Author,
-		Description: description,
-		Price:       price,
-		CoverImage:  coverImage,
-	}
-	bookUuid, err := qtx.CreateBook(pr.ctx, createBookParams)
-	if err != nil {
-		return book.Book{}, err
-	}
-
-	// create bookgenre
-	for _, genreUuid := range genreUuids {
-		err := qtx.CreateBookGenre(pr.ctx, query.CreateBookGenreParams{
-			BookID:  bookUuid,
-			GenreID: genreUuid,
-		})
+		id, err := bookUuid.Value()
 		if err != nil {
 			return book.Book{}, err
 		}
-	}
 
-	if err := tx.Commit(pr.ctx); err != nil {
-		return book.Book{}, err
-	}
+		b.Id = id.(string)
 
-	id, err := bookUuid.Value()
-	if err != nil {
-		return book.Book{}, err
-	}
-
-	b.Id = id.(string)
-
-	return b, nil
+		return b, nil
+	})
 }
 
-func (pr *PostgresRepository) GetBooks(opts book.GetBooksOptions) ([]book.Book, int, error) {
-	row, err := pr.queries.GetBooks(pr.ctx, query.GetBooksParams{
-		Limit:         int32(opts.Limit),
-		Offset:        int32(opts.Offset),
-		Descending:    opts.Desc,
-		OrderBy:       opts.OrderBy,
-		KeywordAuthor: appendPatternWildcard(opts.Filter.Author),
-		KeywordTitle:  appendPatternWildcard(opts.Filter.Title),
-		// Genres:        opts.Filter.Genres,
+func (pr *PostgresRepository) GetBooks(ctx context.Context, opts book.GetBooksOptions) ([]book.Book, int, error) {
+	row, err := withTimeout(ctx, func(ctxWithTimeout context.Context) (query.GetBooksRow, error) {
+		return pr.queries.GetBooks(ctxWithTimeout, query.GetBooksParams{
+			Limit:         int32(opts.Limit),
+			Offset:        int32(opts.Offset),
+			Descending:    opts.Desc,
+			OrderBy:       opts.OrderBy,
+			KeywordAuthor: appendPatternWildcard(opts.Filter.Author),
+			KeywordTitle:  appendPatternWildcard(opts.Filter.Title),
+			// Genres:        opts.Filter.Genres,
+		})
 	})
 	if err != nil {
 		return nil, 0, err
@@ -173,8 +179,10 @@ func (pr *PostgresRepository) GetBooks(opts book.GetBooksOptions) ([]book.Book, 
 	return books, int(row.Count), nil
 }
 
-func (pr *PostgresRepository) GetGenres() ([]string, error) {
-	genreRows, err := pr.queries.GetGenres(pr.ctx)
+func (pr *PostgresRepository) GetGenres(ctx context.Context) ([]string, error) {
+	genreRows, err := withTimeout(ctx, func(ctxWithTimeout context.Context) ([]pgtype.Text, error) {
+		return pr.queries.GetGenres(ctxWithTimeout)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -188,13 +196,15 @@ func (pr *PostgresRepository) GetGenres() ([]string, error) {
 	return genres, nil
 }
 
-func (pr *PostgresRepository) GetBookById(id string) (book.Book, error) {
+func (pr *PostgresRepository) GetBookById(ctx context.Context, id string) (book.Book, error) {
 	var uuid pgtype.UUID
 	if err := uuid.Scan(id); err != nil {
 		return book.Book{}, book.ErrNotFound
 	}
 
-	b, err := pr.queries.GetBookById(pr.ctx, uuid)
+	b, err := withTimeout(ctx, func(ctxWithTimeout context.Context) (query.GetBookByIdRow, error) {
+		return pr.queries.GetBookById(ctxWithTimeout, uuid)
+	})
 	if err != nil {
 		switch err {
 		case pgx.ErrNoRows:
@@ -229,4 +239,32 @@ func (pr *PostgresRepository) GetBookById(id string) (book.Book, error) {
 
 func appendPatternWildcard(s string) string {
 	return fmt.Sprintf("%%%s%%", s)
+}
+
+type withTimeoutResult[T any] struct {
+	result T
+	err    error
+}
+
+func withTimeout[T any](ctx context.Context, cb func(ctxWithTimeout context.Context) (T, error)) (T, error) {
+	timeout := time.Second * 5
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	withoutTimeoutChan := make(chan withTimeoutResult[T])
+
+	go func() {
+		result, err := cb(ctxWithTimeout)
+		withoutTimeoutChan <- withTimeoutResult[T]{
+			err:    err,
+			result: result,
+		}
+	}()
+
+	select {
+	case <-ctxWithTimeout.Done():
+		var defaultValue T
+		return defaultValue, errors.New("operation timed out")
+	case result := <-withoutTimeoutChan:
+		return result.result, result.err
+	}
 }

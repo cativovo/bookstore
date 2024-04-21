@@ -1,6 +1,9 @@
 package book
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 var (
 	ErrNotFound      = errors.New("not found")
@@ -22,12 +25,12 @@ type GetBooksOptions struct {
 }
 
 type BookRepository interface {
-	GetBooks(options GetBooksOptions) (books []Book, count int, err error)
-	GetBookById(id string) (Book, error)
-	GetGenres() ([]string, error)
-	CreateGenre(name string) error
-	DeleteGenre(name string) error
-	CreateBook(b Book) (Book, error)
+	GetBooks(ctx context.Context, options GetBooksOptions) (books []Book, count int, err error)
+	GetBookById(ctx context.Context, id string) (Book, error)
+	GetGenres(ctx context.Context) ([]string, error)
+	CreateGenre(ctx context.Context, name string) error
+	DeleteGenre(ctx context.Context, name string) error
+	CreateBook(ctx context.Context, b Book) (Book, error)
 }
 
 type BookService struct {
@@ -40,30 +43,26 @@ func NewBookService(r BookRepository) *BookService {
 	}
 }
 
-// func (bs *BookService) GetBooks() ([]Book, error) {
-// 	return bs.repository.GetBooks()
-// }
-
-func (bs *BookService) CreateGenre(name string) error {
-	return bs.repository.CreateGenre(name)
+func (bs *BookService) CreateGenre(ctx context.Context, name string) error {
+	return bs.repository.CreateGenre(ctx, name)
 }
 
-func (bs *BookService) DeleteGenre(name string) error {
-	return bs.repository.DeleteGenre(name)
+func (bs *BookService) DeleteGenre(ctx context.Context, name string) error {
+	return bs.repository.DeleteGenre(ctx, name)
 }
 
-func (bs *BookService) CreateBook(b Book) (Book, error) {
-	return bs.repository.CreateBook(b)
+func (bs *BookService) CreateBook(ctx context.Context, b Book) (Book, error) {
+	return bs.repository.CreateBook(ctx, b)
 }
 
-func (bs *BookService) GetBooks(options GetBooksOptions) (books []Book, count int, err error) {
-	return bs.repository.GetBooks(options)
+func (bs *BookService) GetBooks(ctx context.Context, options GetBooksOptions) (books []Book, count int, err error) {
+	return bs.repository.GetBooks(ctx, options)
 }
 
-func (bs *BookService) GetBookById(id string) (Book, error) {
-	return bs.repository.GetBookById(id)
+func (bs *BookService) GetBookById(ctx context.Context, id string) (Book, error) {
+	return bs.repository.GetBookById(ctx, id)
 }
 
-func (bs *BookService) GetGenres() ([]string, error) {
-	return bs.repository.GetGenres()
+func (bs *BookService) GetGenres(ctx context.Context) ([]string, error) {
+	return bs.repository.GetGenres(ctx)
 }
