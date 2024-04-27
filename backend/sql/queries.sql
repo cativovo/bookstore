@@ -28,77 +28,66 @@ INSERT INTO book_genre (
 );
 
 -- name: GetBooks :one
+WITH
+filtered_books as (
+    SELECT
+      book.id AS id,
+      book.title AS title,
+      book.description AS description,
+      book.author AS author,
+      book.price AS price,
+      book.cover_image AS cover_image,
+      COALESCE(ARRAY_AGG(genre.name) FILTER (WHERE genre.name IS NOT NULL), '{}') AS genres
+    FROM
+      book
+    LEFT JOIN
+      book_genre ON book_genre.book_id = book.id
+    LEFT JOIN
+      genre ON genre.id = book_genre.genre_id
+    WHERE 
+      book.author ILIKE @keyword_author
+    AND
+      book.title ILIKE @keyword_title
+    AND
+      book.id
+    IN
+      (
+        SELECT
+          book_genre.book_id
+        FROM
+          genre
+        INNER JOIN
+          book_genre
+        ON
+          book_genre.genre_id = genre.id 
+        AND
+          genre.name ILIKE ANY(@genres::text[])
+        GROUP BY 1
+      )
+    GROUP BY
+      book.id
+)
 SELECT (
   SELECT
-    COUNT(DISTINCT book.id)
+    COUNT(filtered_books.id)
   FROM
-    book
-  LEFT JOIN
-    book_genre ON book_genre.book_id = book.id
-  LEFT JOIN
-    genre ON genre.id = book_genre.genre_id
-  WHERE 
-    book.author ILIKE @keyword_author
-  AND
-    book.title ILIKE @keyword_title
-  AND
-    book.id
-  IN
-    (
-      SELECT
-      book_genre.book_id
-      FROM
-        genre
-      INNER JOIN
-        book_genre
-      ON
-        book_genre.genre_id = genre.id 
-      AND
-        genre.name ILIKE ANY(@genres::text[])
-      GROUP BY 1
-    )
+  filtered_books
 ) AS count,
 (
   SELECT 
     JSON_AGG(rows.*)
   FROM
     (
-      SELECT
-        book.id AS id,
-        book.title AS title,
-        book.description AS description,
-        book.author AS author,
-        book.price AS price,
-        book.cover_image AS cover_image,
-        COALESCE(ARRAY_AGG(genre.name) FILTER (WHERE genre.name IS NOT NULL), '{}') AS genres
-      FROM
-        book
-      LEFT JOIN
-        book_genre ON book_genre.book_id = book.id
-      LEFT JOIN
-        genre ON genre.id = book_genre.genre_id
-      WHERE 
-        book.author ILIKE @keyword_author
-      AND
-        book.title ILIKE @keyword_title
-      AND
-        book.id
-      IN
-        (
-          SELECT
-          book_genre.book_id
-          FROM
-            genre
-          INNER JOIN
-            book_genre
-          ON
-            book_genre.genre_id = genre.id 
-          AND
-            genre.name ILIKE ANY(@genres::text[])
-          GROUP BY 1
-        )
-      GROUP BY
-        book.id
+      select 
+        id,
+        title,
+        description,
+        author,
+        price,
+        cover_image,
+        genres
+      from 
+        filtered_books
       ORDER BY 
         -- will produce title ASC/DESC, author ASC/DESC OR author ASC/DESC, title ASC/DESC
         CASE
