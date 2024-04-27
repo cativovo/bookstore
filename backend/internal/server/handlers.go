@@ -71,9 +71,12 @@ func (h *handler) getBooks(ctx echo.Context) error {
 
 	const limit = 10
 
-	genres := strings.Split(queryParam.Genres, ",")
-	for i, genre := range genres {
-		genres[i] = strings.TrimSpace(genre)
+	genres := make([]string, 0)
+
+	if queryParam.Genres != "" {
+		for _, genre := range strings.Split(queryParam.Genres, ",") {
+			genres = append(genres, strings.TrimSpace(genre))
+		}
 	}
 
 	books, count, err := h.bookService.GetBooks(
@@ -86,7 +89,7 @@ func (h *handler) getBooks(ctx echo.Context) error {
 			Filter: book.GetBooksFilter{
 				Author: queryParam.Author,
 				Title:  queryParam.Title,
-				// Genres: genres,
+				Genres: genres,
 			},
 		},
 	)

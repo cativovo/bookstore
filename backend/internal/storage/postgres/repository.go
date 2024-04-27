@@ -153,6 +153,11 @@ func (pr *PostgresRepository) CreateBook(ctx context.Context, b book.Book) (book
 }
 
 func (pr *PostgresRepository) GetBooks(ctx context.Context, opts book.GetBooksOptions) ([]book.Book, int, error) {
+	genres := opts.Filter.Genres
+	if len(genres) == 0 {
+		genres = []string{"%%"}
+	}
+
 	row, err := withTimeout(ctx, func(ctxWithTimeout context.Context) (query.GetBooksRow, error) {
 		return pr.queries.GetBooks(ctxWithTimeout, query.GetBooksParams{
 			Limit:         int32(opts.Limit),
@@ -161,7 +166,7 @@ func (pr *PostgresRepository) GetBooks(ctx context.Context, opts book.GetBooksOp
 			OrderBy:       opts.OrderBy,
 			KeywordAuthor: appendPatternWildcard(opts.Filter.Author),
 			KeywordTitle:  appendPatternWildcard(opts.Filter.Title),
-			// Genres:        opts.Filter.Genres,
+			Genres:        genres,
 		})
 	})
 	if err != nil {

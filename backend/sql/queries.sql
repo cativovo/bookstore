@@ -41,6 +41,22 @@ SELECT (
     book.author ILIKE @keyword_author
   AND
     book.title ILIKE @keyword_title
+  AND
+    book.id
+  IN
+    (
+      SELECT
+      book_genre.book_id
+      FROM
+        genre
+      INNER JOIN
+        book_genre
+      ON
+        book_genre.genre_id = genre.id 
+      AND
+        genre.name ILIKE ANY(@genres::text[])
+      GROUP BY 1
+    )
 ) AS count,
 (
   SELECT 
@@ -65,6 +81,22 @@ SELECT (
         book.author ILIKE @keyword_author
       AND
         book.title ILIKE @keyword_title
+      AND
+        book.id
+      IN
+        (
+          SELECT
+          book_genre.book_id
+          FROM
+            genre
+          INNER JOIN
+            book_genre
+          ON
+            book_genre.genre_id = genre.id 
+          AND
+            genre.name ILIKE ANY(@genres::text[])
+          GROUP BY 1
+        )
       GROUP BY
         book.id
       ORDER BY 
@@ -116,3 +148,6 @@ GROUP BY
 
 -- name: GetGenres :many
 SELECT name FROM genre;
+
+-- name: test :many
+SELECT name FROM genre where name ilike @genres::text[];

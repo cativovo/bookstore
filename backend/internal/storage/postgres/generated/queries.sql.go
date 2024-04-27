@@ -147,6 +147,22 @@ SELECT (
     book.author ILIKE $3
   AND
     book.title ILIKE $4
+  AND
+    book.id
+  IN
+    (
+      SELECT
+      book_genre.book_id
+      FROM
+        genre
+      INNER JOIN
+        book_genre
+      ON
+        book_genre.genre_id = genre.id 
+      AND
+        genre.name ILIKE ANY($5::text[])
+      GROUP BY 1
+    )
 ) AS count,
 (
   SELECT 
@@ -171,27 +187,43 @@ SELECT (
         book.author ILIKE $3
       AND
         book.title ILIKE $4
+      AND
+        book.id
+      IN
+        (
+          SELECT
+          book_genre.book_id
+          FROM
+            genre
+          INNER JOIN
+            book_genre
+          ON
+            book_genre.genre_id = genre.id 
+          AND
+            genre.name ILIKE ANY($5::text[])
+          GROUP BY 1
+        )
       GROUP BY
         book.id
       ORDER BY 
         -- will produce title ASC/DESC, author ASC/DESC OR author ASC/DESC, title ASC/DESC
         CASE
-          WHEN $5::boolean AND $6::text = 'title' THEN title
-          WHEN $5::boolean AND $6::text = 'author' THEN author
-          WHEN $5::boolean THEN title
+          WHEN $6::boolean AND $7::text = 'title' THEN title
+          WHEN $6::boolean AND $7::text = 'author' THEN author
+          WHEN $6::boolean THEN title
         END DESC,
         CASE
-          WHEN $5::boolean AND $6::text = 'author' THEN title
-          WHEN $5::boolean THEN author
+          WHEN $6::boolean AND $7::text = 'author' THEN title
+          WHEN $6::boolean THEN author
         END DESC,
         CASE
-          WHEN NOT $5::boolean AND $6::text = 'title' THEN title
-          WHEN NOT $5::boolean AND $6::text = 'author' THEN author
-          WHEN NOT $5::boolean THEN title
+          WHEN NOT $6::boolean AND $7::text = 'title' THEN title
+          WHEN NOT $6::boolean AND $7::text = 'author' THEN author
+          WHEN NOT $6::boolean THEN title
         END ASC,
         CASE
-          WHEN NOT $5::boolean AND $6::text = 'author' THEN title
-          WHEN NOT $5::boolean THEN author
+          WHEN NOT $6::boolean AND $7::text = 'author' THEN title
+          WHEN NOT $6::boolean THEN author
         END ASC
       LIMIT 
         $1
@@ -206,6 +238,7 @@ type GetBooksParams struct {
 	Offset        int32
 	KeywordAuthor string
 	KeywordTitle  string
+	Genres        []string
 	Descending    bool
 	OrderBy       string
 }
@@ -221,6 +254,7 @@ func (q *Queries) GetBooks(ctx context.Context, arg GetBooksParams) (GetBooksRow
 		arg.Offset,
 		arg.KeywordAuthor,
 		arg.KeywordTitle,
+		arg.Genres,
 		arg.Descending,
 		arg.OrderBy,
 	)
@@ -246,6 +280,30 @@ SELECT name FROM genre
 
 func (q *Queries) GetGenres(ctx context.Context) ([]pgtype.Text, error) {
 	rows, err := q.db.Query(ctx, getGenres)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Text
+	for rows.Next() {
+		var name pgtype.Text
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		items = append(items, name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const test = `-- name: test :many
+SELECT name FROM genre where name ilike $1::text[]
+`
+
+func (q *Queries) test(ctx context.Context, genres []string) ([]pgtype.Text, error) {
+	rows, err := q.db.Query(ctx, test, genres)
 	if err != nil {
 		return nil, err
 	}
